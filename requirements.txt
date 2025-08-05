@@ -1,0 +1,8 @@
+google-generativeai
+google-ai-generativelanguage
+google-adk
+fastapi
+uvicorn
+python-dotenv
+sse-starlette
+PyGithub

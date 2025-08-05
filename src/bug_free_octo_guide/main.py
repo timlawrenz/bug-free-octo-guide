@@ -1,119 +1,142 @@
-import asyncio
-import argparse
-from google.adk.models.google_llm import Gemini
-from bug_free_octo_guide.agents.prd_agent import PrdAgent
-from bug_free_octo_guide.agents.ticketing_agent import TicketingAgent
-from google.adk.sessions.in_memory_session_service import InMemorySessionService
-from google.adk.runners import Runner
-from google.adk.artifacts import InMemoryArtifactService
-from google.genai import types
+import os
+import uuid
+import logging
+import json
+from dotenv import load_dotenv
+import google.generativeai as genai
+from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+import uvicorn
+from github import Github
 
-class Orchestrator:
-    def __init__(self, feature_idea: str):
-        self._feature_idea = feature_idea
-        self._llm = Gemini(model="gemini-1.5-flash")
-        self._session_service = InMemorySessionService()
-        self._artifact_service = InMemoryArtifactService()
+# --- Logging Configuration ---
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    filename='server.log',
+    filemode='w'
+)
+log = logging.getLogger(__name__)
 
-    async def run_phase_1_prd(self):
-        """
-        Executes the first part of phase 1: generating a PRD.
-        """
-        print("--- Starting Phase 1: From Idea to PRD ---")
+# --- Configuration ---
+log.info("Loading environment variables from .env file...")
+load_dotenv()
+api_key = os.getenv("GEMINI_API_KEY")
+if api_key:
+    log.info("GEMINI_API_KEY found.")
+    genai.configure(api_key=api_key)
+else:
+    log.error("FATAL: GEMINI_API_KEY not found in environment variables.")
+    raise SystemExit("GEMINI_API_KEY is not set.")
 
-        # 1. Initialize the PRD Agent.
-        prd_agent = PrdAgent(llm=self._llm, feature_description=self._feature_idea)
+github_token = os.getenv("GITHUB_TOKEN")
+github_repo_name = os.getenv("GITHUB_REPO")
 
-        # 2. Create a runner for the agent.
-        runner = Runner(
-            agent=prd_agent,
-            session_service=self._session_service,
-            artifact_service=self._artifact_service,
-            app_name="bug-free-octo-guide",
-        )
+if not github_token or not github_repo_name:
+    log.error("FATAL: GITHUB_TOKEN or GITHUB_REPO not found in environment variables.")
+    raise SystemExit("GITHUB_TOKEN and GITHUB_REPO must be set.")
 
-        # 3. Create a new session for the interaction.
-        session = await self._session_service.create_session(
-            app_name="bug-free-octo-guide",
-            user_id="user123"
-        )
+# --- Data Models ---
+class ChatRequest(BaseModel):
+    text: str
+    session_id: str | None = None
 
-        # 4. Run the agent.
-        generated_prd = ""
-        user_message = types.Content(role="user", parts=[types.Part(text="Start")])
-        async for event in runner.run_async(
-            session_id=session.id,
-            user_id=session.user_id,
-            new_message=user_message
-        ):
-            if event.is_final_response() and event.content:
-                generated_prd = event.content.parts[0].text
+class ChatResponse(BaseModel):
+    response: str
+    session_id: str
 
-        # 5. Save the generated PRD to a file.
-        output_filename = "prd-output.md"
-        with open(output_filename, "w") as f:
-            f.write(generated_prd)
+class TicketRequest(BaseModel):
+    prd: str
 
-        print(f"✅ PRD generated and saved to {output_filename}")
-        print("--- Phase 1 (PRD) Complete ---")
-        return generated_prd
-
-    async def run_phase_1_ticketing(self, prd: str):
-        """
-        Executes the second part of phase 1: generating tickets from a PRD.
-        """
-        print("--- Starting Phase 1: From PRD to Tickets ---")
-
-        # 1. Initialize the Ticketing Agent.
-        ticketing_agent = TicketingAgent(llm=self._llm, prd=prd)
-
-        # 2. Create a runner for the agent.
-        runner = Runner(
-            agent=ticketing_agent,
-            session_service=self._session_service,
-            artifact_service=self._artifact_service,
-            app_name="bug-free-octo-guide",
-        )
-
-        # 3. Create a new session for the interaction.
-        session = await self._session_service.create_session(
-            app_name="bug-free-octo-guide",
-            user_id="user123"
-        )
-
-        # 4. Run the agent.
-        generated_tickets = ""
-        user_message = types.Content(role="user", parts=[types.Part(text="Start")])
-        async for event in runner.run_async(
-            session_id=session.id,
-            user_id=session.user_id,
-            new_message=user_message
-        ):
-            if event.is_final_response() and event.content:
-                generated_tickets = event.content.parts[0].text
-
-        # 5. Print the generated tickets.
-        print("--- Generated Tickets ---")
-        print(generated_tickets)
-        print("--- Phase 1 (Ticketing) Complete ---")
+class TicketResponse(BaseModel):
+    message: str
+    ticket_urls: list[str]
 
 
-async def main():
+# --- In-Memory Session Store ---
+sessions = {}
+log.info("In-memory session store initialized.")
+
+# --- FastAPI Application ---
+app = FastAPI()
+log.info("FastAPI application created.")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+log.info("CORS middleware configured.")
+
+@app.post("/chat", response_model=ChatResponse)
+async def chat(request: ChatRequest):
     """
-    Main entry point for the orchestrator.
+    Handles a chat request, maintaining conversation history using a session ID.
     """
-    parser = argparse.ArgumentParser(description="bug-free-octo-guide orchestrator")
-    parser.add_argument(
-        "feature_idea",
-        help="The high-level feature idea to be implemented.",
-    )
-    args = parser.parse_args()
+    log.info(f"Received chat request. Session ID: {request.session_id}, Message: '{request.text}'")
+    session_id = request.session_id or str(uuid.uuid4())
+    log.info(f"Using session_id: {session_id}")
 
-    print("Orchestrator started.")
-    orchestrator = Orchestrator(feature_idea=args.feature_idea)
-    prd = await orchestrator.run_phase_1_prd()
-    await orchestrator.run_phase_1_ticketing(prd)
-    print("Orchestrator finished.")
+    try:
+        if session_id not in sessions:
+            log.info(f"Creating new chat session for session_id: {session_id}")
+            model = genai.GenerativeModel('models/gemini-2.5-pro')
+            sessions[session_id] = model.start_chat(history=[])
+            log.info(f"New chat session created for session_id: {session_id}")
+
+        chat_session = sessions[session_id]
+
+        log.info(f"Sending message to Gemini model for session_id: {session_id}...")
+        response = await chat_session.send_message_async(request.text)
+        log.info(f"Received response from Gemini model for session_id: {session_id}.")
+
+        return ChatResponse(response=response.text, session_id=session_id)
+    except Exception as e:
+        log.error(f"An error occurred during chat processing for session_id {session_id}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="An internal error occurred.")
+
+@app.post("/create_tickets", response_model=TicketResponse)
+async def create_tickets(request: TicketRequest):
+    """
+    Generates tickets from a PRD and creates them in a GitHub repository.
+    """
+    log.info("Received request to create tickets.")
+    try:
+        # 1. Generate tickets from PRD using the TicketingAgent prompt
+        ticketing_model = genai.GenerativeModel('models/gemini-2.5-pro')
+        with open("ticketprompt.md", "r") as f:
+            prompt = f.read().replace("{{prd}}", request.prd)
+
+        log.info("Generating tickets from PRD...")
+        response = await ticketing_model.generate_content_async(prompt)
+        tickets_json = response.text.strip().replace("```json", "").replace("```", "")
+        tickets = json.loads(tickets_json)
+        log.info(f"Generated {len(tickets)} tickets.")
+
+        # 2. Create tickets in GitHub
+        g = Github(github_token)
+        repo = g.get_repo(github_repo_name)
+        ticket_urls = []
+
+        for ticket in tickets:
+            log.info(f"Creating ticket: {ticket['title']}")
+            created_issue = repo.create_issue(
+                title=ticket['title'],
+                body=ticket['description']
+            )
+            ticket_urls.append(created_issue.html_url)
+            log.info(f"Successfully created ticket: {created_issue.html_url}")
+
+        return TicketResponse(message="Successfully created tickets!", ticket_urls=ticket_urls)
+
+    except Exception as e:
+        log.error(f"An error occurred during ticket creation: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="An internal error occurred during ticket creation.")
+
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    log.info("Starting Uvicorn server...")
+    uvicorn.run(app, host="0.0.0.0", port=8000)

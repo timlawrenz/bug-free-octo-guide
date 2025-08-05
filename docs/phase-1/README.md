@@ -1,34 +1,48 @@
 # Phase 1: Planning and Decomposition
 
-This phase takes the high-level feature idea provided by the user and transforms it into a detailed technical specification (PRD) and a set of actionable engineering tickets.
+This phase takes a high-level feature idea from the user and transforms it into a detailed technical specification (PRD) and a set of actionable engineering tickets. The process is managed by a FastAPI backend and a React-based web interface.
 
-## Current Implementation
+## Architecture
 
-The initial implementation for this phase is located in `src/bug_free_octo_guide/main.py` within the `Orchestrator` class. The process is divided into two main steps:
+### Backend (`src` directory)
 
-### 1. PRD Generation
+The backend is a **FastAPI** server written in Python. It exposes two main endpoints:
 
--   **Method:** `run_phase_1_prd()`
--   **Agent:** `PrdAgent` (from `src/bug_free_octo_guide/agents/prd_agent.py`)
--   **Process:**
-    1.  The `Orchestrator` initializes the `PrdAgent`, providing it with the feature description from the user.
-    2.  It uses the Google ADK's `Runner` to execute the agent.
-    3.  The agent processes the input based on its internal prompt (`prdprompt.md`) and generates a detailed technical specification document.
-    4.  The orchestrator saves the output to a file named `prd-output.md`.
+1.  `/chat`: This endpoint handles the interactive, multi-turn conversation for generating the PRD. It uses the `google-generativeai` library to communicate with the Gemini model and maintains the conversation state using a session ID.
+2.  `/create_tickets`: This endpoint receives the final PRD content, uses a Gemini model to generate a list of structured engineering tickets, and then uses the `PyGithub` library to create those tickets in a specified GitHub repository.
 
-### 2. Ticket Generation
+### Frontend (`ui` directory)
 
--   **Method:** `run_phase_1_ticketing()`
--   **Agent:** `TicketingAgent` (from `src/bug_free_octo_guide/agents/ticketing_agent.py`)
--   **Process:**
-    1.  The `Orchestrator` takes the generated PRD from the previous step as input.
-    2.  It initializes the `TicketingAgent` with the PRD content.
-    3.  The `Runner` executes the agent, which uses its prompt (`ticketprompt.md`) to break the PRD down into a series of structured engineering tickets.
-    4.  The orchestrator prints the generated tickets to the console.
+The frontend is a modern chat interface built with **React** and **TypeScript**, and styled with **Tailwind CSS**. It provides a user-friendly way to interact with the PRD Agent and will be extended to trigger the ticket creation process.
+
+### Environment Configuration
+
+The application requires a `.env` file in the project root with the following variables:
+
+```
+GEMINI_API_KEY=your_gemini_api_key
+GITHUB_TOKEN=your_github_personal_access_token
+GITHUB_REPO=your_github_username/repository_name
+```
+
+## Interaction Flow
+
+The following diagram illustrates the flow for a single turn in the PRD generation conversation:
+
+```mermaid
+sequenceDiagram
+    participant User (Browser)
+    participant ADK Backend (FastAPI)
+    participant Gemini Model
+
+    User (Browser)->>+ADK Backend (FastAPI): POST /chat (Sends user message and session_id)
+    ADK Backend (FastAPI)->>+Gemini Model: send_message_async(user_message)
+    Gemini Model-->>-ADK Backend (FastAPI): Returns generated response
+    ADK Backend (FastAPI)-->>-User (Browser): Streams response to the chat UI
+```
 
 ## Next Steps
 
-The current implementation successfully demonstrates the core logic of this phase. Future work will involve:
-
--   Implementing the human-in-the-loop checkpoint for PRD review and approval.
--   Integrating with the GitHub API to automatically create the generated tickets in the project repository.
+-   **Frontend Ticket Creation:** Add a button or command in the UI to send the generated PRD to the `/create_tickets` endpoint.
+-   **Human-in-the-Loop:** Implement the human checkpoint for PRD review and approval within the UI before creating tickets.
+-   **Error Handling:** Improve error handling and user feedback in both the frontend and backend.
