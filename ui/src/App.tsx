@@ -3,9 +3,17 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import './App.css';
 
+const planningMessageSequence = (repo: string) => [
+  `Cloning repository ${repo}...`,
+  "Analyzing repository structure...",
+  "Identifying relevant files and models...",
+  "Starting planning process...",
+  "Generating initial questions..."
+];
+
 function App() {
-  const [featureDescription, setFeatureDescription] = useState('');
-  const [githubRepo, setGithubRepo] = useState('');
+  const [featureDescription, setFeatureDescription] = useState('add a profile picture');
+  const [githubRepo, setGithubRepo] = useState('timlawrenz/herLens');
   const [isPlanning, setIsPlanning] = useState(false);
   const [planningStatus, setPlanningStatus] = useState<string | null>(null);
   const [messages, setMessages] = useState<{ text: string, author: string }[]>([]);
@@ -13,6 +21,7 @@ function App() {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [prd, setPrd] = useState<string | null>(null);
   const chatBoxRef = useRef<HTMLDivElement>(null);
+  const [currentPlanningMessageIndex, setCurrentPlanningMessageIndex] = useState(0);
 
   useEffect(() => {
     if (chatBoxRef.current) {
@@ -22,6 +31,7 @@ function App() {
 
   useEffect(() => {
     if (sessionId) {
+      const messagesToShow = planningMessageSequence(githubRepo);
       const interval = setInterval(async () => {
         try {
           const response = await fetch(`http://184.72.72.233:8000/planning_status/${sessionId}`);
@@ -34,6 +44,21 @@ function App() {
             } else if (data.status === 'error') {
               setMessages(prevMessages => [...prevMessages, { text: `Error: ${data.response}`, author: 'bot' }]);
               clearInterval(interval);
+            } else {
+              setCurrentPlanningMessageIndex(prevIndex => {
+                const nextIndex = prevIndex + 1;
+                if (nextIndex < messagesToShow.length) {
+                  setMessages(prevMessages => {
+                    const lastMessage = prevMessages[prevMessages.length - 1];
+                    if (lastMessage && lastMessage.text === messagesToShow[nextIndex]) {
+                      return prevMessages;
+                    }
+                    return [...prevMessages, { text: messagesToShow[nextIndex], author: 'bot' }];
+                  });
+                  return nextIndex;
+                }
+                return prevIndex;
+              });
             }
           } else {
             console.error('Error fetching planning status');
@@ -46,12 +71,14 @@ function App() {
       }, 2000);
       return () => clearInterval(interval);
     }
-  }, [sessionId]);
+  }, [sessionId, githubRepo]);
 
   const handleStartPlanning = async () => {
     if (featureDescription.trim() && githubRepo.trim()) {
       setIsPlanning(true);
-      setMessages([{ text: `Analyzing ${githubRepo} to plan the '${featureDescription}' feature...`, author: 'bot' }]);
+      const messagesToShow = planningMessageSequence(githubRepo);
+      setMessages([{ text: messagesToShow[0], author: 'bot' }]);
+      setCurrentPlanningMessageIndex(0);
 
       try {
         const response = await fetch('http://184.72.72.233:8000/start_planning', {
@@ -80,6 +107,7 @@ function App() {
       }
     }
   };
+
 
   const handleSend = async () => {
     if (input.trim()) {
