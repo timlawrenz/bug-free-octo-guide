@@ -17,3 +17,4 @@ __pycache__/
 .eslintcache
 ui/node_modules/.cache
 ui/node_modules/.package-lock.jsonerror.log
+__pycache__/
