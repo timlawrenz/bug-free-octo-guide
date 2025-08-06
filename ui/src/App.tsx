@@ -7,6 +7,7 @@ function App() {
   const [featureDescription, setFeatureDescription] = useState('');
   const [githubRepo, setGithubRepo] = useState('');
   const [isPlanning, setIsPlanning] = useState(false);
+  const [planningStatus, setPlanningStatus] = useState<string | null>(null);
   const [messages, setMessages] = useState<{ text: string, author: string }[]>([]);
   const [input, setInput] = useState('');
   const [sessionId, setSessionId] = useState<string | null>(null);
@@ -18,6 +19,34 @@ function App() {
       chatBoxRef.current.scrollTop = chatBoxRef.current.scrollHeight;
     }
   }, [messages]);
+
+  useEffect(() => {
+    if (sessionId) {
+      const interval = setInterval(async () => {
+        try {
+          const response = await fetch(`http://184.72.72.233:8000/planning_status/${sessionId}`);
+          if (response.ok) {
+            const data = await response.json();
+            setPlanningStatus(data.status);
+            if (data.status === 'ready') {
+              setMessages(prevMessages => [...prevMessages, { text: data.response, author: 'bot' }]);
+              clearInterval(interval);
+            } else if (data.status === 'error') {
+              setMessages(prevMessages => [...prevMessages, { text: `Error: ${data.response}`, author: 'bot' }]);
+              clearInterval(interval);
+            }
+          } else {
+            console.error('Error fetching planning status');
+            clearInterval(interval);
+          }
+        } catch (error) {
+          console.error('Error fetching planning status:', error);
+          clearInterval(interval);
+        }
+      }, 2000);
+      return () => clearInterval(interval);
+    }
+  }, [sessionId]);
 
   const handleStartPlanning = async () => {
     if (featureDescription.trim() && githubRepo.trim()) {
@@ -38,13 +67,11 @@ function App() {
 
         if (response.ok) {
           const data = await response.json();
-          setMessages(prevMessages => [...prevMessages, { text: data.response, author: 'bot' }]);
           setSessionId(data.session_id);
         } else {
           const errorData = await response.json();
-          const errorMessage = `Error: An internal error occurred during planning session startup.\n\n\
+          const errorMessage = `Error: An internal error occurred during planning session startup.\n\n\` + 
 ${JSON.stringify(errorData, null, 2)}
-\
 
 
 `;
@@ -57,6 +84,7 @@ ${JSON.stringify(errorData, null, 2)}
       }
     }
   };
+}
 
   const handleSend = async () => {
     if (input.trim()) {
@@ -180,9 +208,10 @@ ${data.ticket_urls.join('\n')}`);
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-            placeholder="Type your message..."
+            placeholder={planningStatus === 'ready' ? "Type your message..." : `Planning status: ${planningStatus}`}
+            disabled={planningStatus !== 'ready'}
           />
-          <button className="bg-blue-600 text-white px-4 rounded-r-lg hover:bg-blue-700" onClick={handleSend}>Send</button>
+          <button className="bg-blue-600 text-white px-4 rounded-r-lg hover:bg-blue-700" onClick={handleSend} disabled={planningStatus !== 'ready'}>Send</button>
         </div>
       </div>
       {prd && (

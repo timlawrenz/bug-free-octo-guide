@@ -6,7 +6,7 @@ import tempfile
 import shutil
 from dotenv import load_dotenv
 import google.generativeai as genai
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import uvicorn
@@ -42,6 +42,13 @@ if not github_token:
 class StartPlanningRequest(BaseModel):
     feature_description: str
     repo_url: str
+
+class StartPlanningResponse(BaseModel):
+    session_id: str
+
+class PlanningStatusResponse(BaseModel):
+    status: str
+    response: str | None = None
 
 class ChatRequest(BaseModel):
     text: str
@@ -127,17 +134,14 @@ async def get_repos():
         raise HTTPException(status_code=500, detail="An internal error occurred while fetching repositories.")
 
 
-@app.post("/start_planning", response_model=ChatResponse)
-async def start_planning(request: StartPlanningRequest):
-    """
-    Starts a new planning session by analyzing a repo and initiating a chat.
-    """
-    log.info(f"Starting new planning session for repo: {request.repo_url}")
-    session_id = str(uuid.uuid4())
 
+async def run_planning_session(session_id: str, repo_url: str, feature_description: str):
+    """Runs the planning session in the background."""
+    sessions[session_id] = {"status": "cloning", "chat_session": None}
     try:
         # 1. Get repository context
-        repo_context = get_repo_context(request.repo_url)
+        repo_context = get_repo_context(repo_url)
+        sessions[session_id]["status"] = "generating"
 
         # 2. Create the initial prompt
         with open("prdprompt.md", "r") as f:
@@ -146,7 +150,7 @@ async def start_planning(request: StartPlanningRequest):
         initial_prompt = (
             prompt_template
             .replace("{{context}}", repo_context)
-            .replace("{{feature_description}}", request.feature_description)
+            .replace("{{feature_description}}", feature_description)
         )
 
         # 3. Start the chat session
@@ -154,17 +158,44 @@ async def start_planning(request: StartPlanningRequest):
         chat_session = model.start_chat(history=[
             {'role': 'user', 'parts': [initial_prompt]}
         ])
-        sessions[session_id] = chat_session
-        log.info(f"New chat session created for session_id: {session_id}")
-
+        
         # 4. Get the first message from the bot
         response = await chat_session.send_message_async("Continue.")
         
-        return ChatResponse(response=response.text, session_id=session_id)
+        sessions[session_id]["status"] = "ready"
+        sessions[session_id]["chat_session"] = chat_session
+        sessions[session_id]["response"] = response.text
 
     except Exception as e:
         log.error(f"An error occurred during planning session startup: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"An internal error occurred during planning session startup: {e}")
+        sessions[session_id]["status"] = "error"
+        sessions[session_id]["response"] = str(e)
+
+
+@app.post("/start_planning", response_model=StartPlanningResponse)
+async def start_planning(request: StartPlanningRequest, background_tasks: BackgroundTasks):
+    """
+    Starts a new planning session by analyzing a repo and initiating a chat in the background.
+    """
+    log.info(f"Starting new planning session for repo: {request.repo_url}")
+    session_id = str(uuid.uuid4())
+    background_tasks.add_task(run_planning_session, session_id, request.repo_url, request.feature_description)
+    return StartPlanningResponse(session_id=session_id)
+
+
+@app.get("/planning_status/{session_id}", response_model=PlanningStatusResponse)
+async def planning_status(session_id: str):
+    """
+    Checks the status of a planning session.
+    """
+    if session_id not in sessions:
+        raise HTTPException(status_code=404, detail="Session not found.")
+    
+    status = sessions[session_id]["status"]
+    response = sessions[session_id].get("response")
+
+    return PlanningStatusResponse(status=status, response=response)
+
 
 
 @app.post("/chat", response_model=ChatResponse)
@@ -177,8 +208,11 @@ async def chat(request: ChatRequest):
     if not session_id or session_id not in sessions:
         raise HTTPException(status_code=400, detail="Invalid session ID.")
 
+    if sessions[session_id]["status"] != "ready":
+        raise HTTPException(status_code=400, detail="Session is not ready for chat.")
+
     try:
-        chat_session = sessions[session_id]
+        chat_session = sessions[session_id]["chat_session"]
         response = await chat_session.send_message_async(request.text)
         return ChatResponse(response=response.text, session_id=session_id)
     except Exception as e:
