@@ -21,7 +21,7 @@ function App() {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [prd, setPrd] = useState<string | null>(null);
   const chatBoxRef = useRef<HTMLDivElement>(null);
-  const [currentPlanningMessageIndex, setCurrentPlanningMessageIndex] = useState(0);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     if (chatBoxRef.current) {
@@ -32,6 +32,7 @@ function App() {
   useEffect(() => {
     if (sessionId) {
       const messagesToShow = planningMessageSequence(githubRepo);
+      let messageIndex = 0;
       const interval = setInterval(async () => {
         try {
           const response = await fetch(`http://184.72.72.233:8000/planning_status/${sessionId}`);
@@ -45,20 +46,16 @@ function App() {
               setMessages(prevMessages => [...prevMessages, { text: `Error: ${data.response}`, author: 'bot' }]);
               clearInterval(interval);
             } else {
-              setCurrentPlanningMessageIndex(prevIndex => {
-                const nextIndex = prevIndex + 1;
-                if (nextIndex < messagesToShow.length) {
+                messageIndex++;
+                if (messageIndex < messagesToShow.length) {
                   setMessages(prevMessages => {
                     const lastMessage = prevMessages[prevMessages.length - 1];
-                    if (lastMessage && lastMessage.text === messagesToShow[nextIndex]) {
+                    if (lastMessage && lastMessage.text === messagesToShow[messageIndex]) {
                       return prevMessages;
                     }
-                    return [...prevMessages, { text: messagesToShow[nextIndex], author: 'bot' }];
+                    return [...prevMessages, { text: messagesToShow[messageIndex], author: 'bot' }];
                   });
-                  return nextIndex;
                 }
-                return prevIndex;
-              });
             }
           } else {
             console.error('Error fetching planning status');
@@ -78,7 +75,6 @@ function App() {
       setIsPlanning(true);
       const messagesToShow = planningMessageSequence(githubRepo);
       setMessages([{ text: messagesToShow[0], author: 'bot' }]);
-      setCurrentPlanningMessageIndex(0);
 
       try {
         const response = await fetch('http://184.72.72.233:8000/start_planning', {
@@ -110,11 +106,12 @@ function App() {
 
 
   const handleSend = async () => {
-    if (input.trim()) {
+    if (input.trim() && !isLoading) {
       const newMessages = [...messages, { text: input, author: 'user' }];
       setMessages(newMessages);
       const messageToSend = input;
       setInput('');
+      setIsLoading(true);
 
       try {
         const response = await fetch('http://184.72.72.233:8000/chat', {
@@ -142,6 +139,8 @@ function App() {
         console.error('Error sending message:', error);
         const errorMessage = error instanceof Error ? error.message : String(error);
         setMessages([...newMessages, { text: `Error: Could not connect to the server. ${errorMessage}`, author: 'bot' }]);
+      } finally {
+        setIsLoading(false);
       }
     }
   };
@@ -204,10 +203,10 @@ function App() {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-            placeholder={planningStatus === 'ready' ? "Type your message..." : `Planning status: ${planningStatus}`}
-            disabled={planningStatus !== 'ready'}
+            placeholder={isLoading ? "Thinking..." : (planningStatus === 'ready' ? "Type your message..." : `Planning status: ${planningStatus}`)}
+            disabled={isLoading || planningStatus !== 'ready'}
           />
-          <button className="bg-blue-600 text-white px-4 rounded-r-lg hover:bg-blue-700" onClick={handleSend} disabled={planningStatus !== 'ready'}>Send</button>
+          <button className="bg-blue-600 text-white px-4 rounded-r-lg hover:bg-blue-700" onClick={handleSend} disabled={isLoading || planningStatus !== 'ready'}>Send</button>
         </div>
       </div>
     </div>
