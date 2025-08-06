@@ -84,7 +84,6 @@ ${JSON.stringify(errorData, null, 2)}
       }
     }
   };
-}
 
   const handleSend = async () => {
     if (input.trim()) {
@@ -137,7 +136,8 @@ ${JSON.stringify(errorData, null, 2)}
         if (response.ok) {
           const data = await response.json();
           alert(`Successfully created tickets:
-${data.ticket_urls.join('\n')}`);
+${data.ticket_urls.join('
+')}`);
         } else {
           const errorData = await response.json();
           alert(`Error creating tickets: ${errorData.detail}`);
