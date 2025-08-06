@@ -1,9 +1,11 @@
 from google.adk.agents import Agent
-from google.adk.models import Model
+from google.adk.models.base_llm import BaseLlm
+from google.adk.tools.base_tool import BaseTool
+from google.genai import types
 import os
 
 class TicketingAgent(Agent):
-    def __init__(self, llm: Model, prd: str):
+    def __init__(self, llm: BaseLlm, prd: str):
         super().__init__(llm=llm)
         self._prd = prd
 

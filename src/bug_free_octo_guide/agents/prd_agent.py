@@ -1,11 +1,13 @@
 from google.adk.agents import Agent
-from google.adk.models import Model
-import os
+from google.adk.models.base_llm import BaseLlm
+from google.adk.tools.base_tool import BaseTool
+from google.genai import types
 
 class PrdAgent(Agent):
-    def __init__(self, llm: Model, feature_description: str):
+    def __init__(self, llm: BaseLlm, feature_description: str):
         super().__init__(llm=llm)
-        self._feature_description = feature_description
+        self.feature_description = feature_description
+        self.tools: list[BaseTool] = []
 
     def load_prompt(self) -> str:
         """
@@ -14,4 +16,4 @@ class PrdAgent(Agent):
         prompt_path = os.path.join(os.path.dirname(__file__), "..", "..", "prdprompt.md")
         with open(prompt_path, "r") as f:
             prompt = f.read()
-        return prompt.replace("[Engineer: Provide a concise name for the feature]", self._feature_description)
+        return prompt.replace("[Engineer: Provide a concise name for the feature]", self.feature_description)

@@ -10,14 +10,16 @@ To run the application, you will need to start two servers in separate terminal 
 1.  **Backend Server:**
     ```bash
     # From the project root
-    venv/bin/python src/bug_free_octo_guide/main.py
+    venv/bin/python -m src.bug_free_octo_guide.main
     ```
+    The backend server will be available at `http://0.0.0.0:8000`.
 
 2.  **Frontend Server:**
     ```bash
     # From the project root
     cd ui && npm start
     ```
+    The frontend development server will be available at `http://localhost:3000` and accessible on your local network.
 
 ## Phase 1: Planning and Decomposition (The Orchestrator's First Act)
 The process begins when an engineer provides a high-level request to a central orchestrator script. The orchestrator's first job is to understand the task and break it down.

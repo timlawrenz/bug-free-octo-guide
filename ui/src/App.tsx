@@ -3,19 +3,10 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import './App.css';
 
-const planningMessageSequence = (repo: string) => [
-  `Cloning repository ${repo}...`,
-  "Analyzing repository structure...",
-  "Identifying relevant files and models...",
-  "Starting planning process...",
-  "Generating initial questions..."
-];
-
 function App() {
   const [featureDescription, setFeatureDescription] = useState('add a profile picture');
   const [githubRepo, setGithubRepo] = useState('timlawrenz/herLens');
   const [isPlanning, setIsPlanning] = useState(false);
-  const [planningStatus, setPlanningStatus] = useState<string | null>(null);
   const [messages, setMessages] = useState<{ text: string, author: string }[]>([]);
   const [input, setInput] = useState('');
   const [sessionId, setSessionId] = useState<string | null>(null);
@@ -29,92 +20,42 @@ function App() {
     }
   }, [messages]);
 
-  useEffect(() => {
-    if (sessionId) {
-      const messagesToShow = planningMessageSequence(githubRepo);
-      let messageIndex = 0;
-      const interval = setInterval(async () => {
-        try {
-          const response = await fetch(`http://184.72.72.233:8000/planning_status/${sessionId}`);
-          if (response.ok) {
-            const data = await response.json();
-            setPlanningStatus(data.status);
-            if (data.status === 'ready') {
-              setMessages(prevMessages => [...prevMessages, { text: data.response, author: 'bot' }]);
-              clearInterval(interval);
-            } else if (data.status === 'error') {
-              setMessages(prevMessages => [...prevMessages, { text: `Error: ${data.response}`, author: 'bot' }]);
-              clearInterval(interval);
-            } else {
-                messageIndex++;
-                if (messageIndex < messagesToShow.length) {
-                  setMessages(prevMessages => {
-                    const lastMessage = prevMessages[prevMessages.length - 1];
-                    if (lastMessage && lastMessage.text === messagesToShow[messageIndex]) {
-                      return prevMessages;
-                    }
-                    return [...prevMessages, { text: messagesToShow[messageIndex], author: 'bot' }];
-                  });
-                }
-            }
-          } else {
-            console.error('Error fetching planning status');
-            clearInterval(interval);
-          }
-        } catch (error) {
-          console.error('Error fetching planning status:', error);
-          clearInterval(interval);
-        }
-      }, 2000);
-      return () => clearInterval(interval);
+  const handleDownloadPrd = () => {
+    if (prd) {
+      const blob = new Blob([prd], { type: 'text/markdown' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'prd.md';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
     }
-  }, [sessionId, githubRepo]);
+  };
 
   const handleStartPlanning = async () => {
     if (featureDescription.trim() && githubRepo.trim()) {
       setIsPlanning(true);
-      const messagesToShow = planningMessageSequence(githubRepo);
-      setMessages([{ text: messagesToShow[0], author: 'bot' }]);
-
-      try {
-        const response = await fetch('http://184.72.72.233:8000/start_planning', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            feature_description: featureDescription,
-            repo_url: `https://github.com/${githubRepo}.git`
-          }),
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          setSessionId(data.session_id);
-        } else {
-          const errorData = await response.json();
-          const errorMessage = `Error: An internal error occurred during planning session startup.\n\n${JSON.stringify(errorData, null, 2)}`;
-          setMessages(prevMessages => [...prevMessages, { text: errorMessage, author: 'bot' }]);
-        }
-      } catch (error) {
-        console.error('Error starting planning session:', error);
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        setMessages(prevMessages => [...prevMessages, { text: `Error: Could not connect to the server to start planning. ${errorMessage}`, author: 'bot' }]);
-      }
+      const initialMessage = `Feature: ${featureDescription}\nRepo: https://github.com/${githubRepo}.git`;
+      setMessages([{ text: `Starting planning for feature: "${featureDescription}"...`, author: 'bot' }]);
+      
+      // Directly call the chat endpoint to start the process
+      await handleSend(initialMessage);
     }
   };
 
-
-  const handleSend = async () => {
-    if (input.trim() && !isLoading) {
-      const newMessages = [...messages, { text: input, author: 'user' }];
+  const handleSend = async (messageOverride?: string) => {
+    const message = messageOverride || input;
+    if (message.trim() && !isLoading) {
+      const newMessages = [...messages, { text: message, author: 'user' }];
       setMessages(newMessages);
-      const messageToSend = input;
+      const messageToSend = message;
       setInput('');
       setIsLoading(true);
 
       try {
-        const response = await fetch('http://184.72.72.233:8000/chat', {
+        const response = await fetch('http://<YOUR_SERVER_IP>:8000/chat', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -124,21 +65,26 @@ function App() {
 
         if (response.ok) {
           const data = await response.json();
-          setMessages([...newMessages, { text: data.response, author: 'bot' }]);
+          setMessages(prev => [...prev, { text: data.response, author: 'bot' }]);
           setSessionId(data.session_id);
-          if (!prd) {
-            setPrd("This is a placeholder for the generated PRD content.");
+          // Check if the response contains ticket-like structures to identify PRD
+          if (data.response.includes('### Ticket')) {
+            // Assuming the PRD is the last bot message before the tickets
+            const lastBotMessage = newMessages.filter(m => m.author === 'bot').pop();
+            if(lastBotMessage) {
+              setPrd(lastBotMessage.text);
+            }
           }
         } else {
           console.error('Error sending message');
           const errorData = await response.json();
-          const errorMessage = `Error: An internal error occurred during planning session startup.\n\n${JSON.stringify(errorData, null, 2)}\n\n`;
-          setMessages([...newMessages, { text: errorMessage, author: 'bot' }]);
+          const errorMessage = `Error: An internal error occurred.\n\n${JSON.stringify(errorData, null, 2)}\n\n`;
+          setMessages(prev => [...prev, { text: errorMessage, author: 'bot' }]);
         } 
       } catch (error) {
         console.error('Error sending message:', error);
         const errorMessage = error instanceof Error ? error.message : String(error);
-        setMessages([...newMessages, { text: `Error: Could not connect to the server. ${errorMessage}`, author: 'bot' }]);
+        setMessages(prev => [...prev, { text: `Error: Could not connect to the server. ${errorMessage}`, author: 'bot' }]);
       } finally {
         setIsLoading(false);
       }
@@ -203,11 +149,21 @@ function App() {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-            placeholder={isLoading ? "Thinking..." : (planningStatus === 'ready' ? "Type your message..." : `Planning status: ${planningStatus}`)}
-            disabled={isLoading || planningStatus !== 'ready'}
+            placeholder={isLoading ? "Thinking..." : "Type 'approve' to generate tickets, or ask for changes."}
+            disabled={isLoading}
           />
-          <button className="bg-blue-600 text-white px-4 rounded-r-lg hover:bg-blue-700" onClick={handleSend} disabled={isLoading || planningStatus !== 'ready'}>Send</button>
+          <button className="bg-blue-600 text-white px-4 rounded-r-lg hover:bg-blue-700" onClick={() => handleSend()} disabled={isLoading}>Send</button>
         </div>
+        {prd && (
+          <div className="mt-4 text-center">
+            <button
+              className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700"
+              onClick={handleDownloadPrd}
+            >
+              Download PRD
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
