@@ -70,11 +70,7 @@ function App() {
           setSessionId(data.session_id);
         } else {
           const errorData = await response.json();
-          const errorMessage = `Error: An internal error occurred during planning session startup.\n\n\` + 
-${JSON.stringify(errorData, null, 2)}
-
-
-`;
+          const errorMessage = `Error: An internal error occurred during planning session startup.\n\n${JSON.stringify(errorData, null, 2)}`;
           setMessages(prevMessages => [...prevMessages, { text: errorMessage, author: 'bot' }]);
         }
       } catch (error) {
@@ -118,34 +114,6 @@ ${JSON.stringify(errorData, null, 2)}
         console.error('Error sending message:', error);
         const errorMessage = error instanceof Error ? error.message : String(error);
         setMessages([...newMessages, { text: `Error: Could not connect to the server. ${errorMessage}`, author: 'bot' }]);
-      }
-    }
-  };
-
-  const handleCreateTickets = async () => {
-    if (prd && githubRepo.trim()) {
-      try {
-        const response = await fetch('http://184.72.72.233:8000/create_tickets', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ prd: prd, repo: githubRepo }),
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          alert(`Successfully created tickets:
-${data.ticket_urls.join('
-')}`);
-        } else {
-          const errorData = await response.json();
-          alert(`Error creating tickets: ${errorData.detail}`);
-        }
-      } catch (error) {
-        console.error('Error creating tickets:', error);
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        alert(`An error occurred while creating tickets: ${errorMessage}`);
       }
     }
   };
@@ -214,25 +182,6 @@ ${data.ticket_urls.join('
           <button className="bg-blue-600 text-white px-4 rounded-r-lg hover:bg-blue-700" onClick={handleSend} disabled={planningStatus !== 'ready'}>Send</button>
         </div>
       </div>
-      {prd && (
-        <div className="p-4 bg-white border-t border-gray-200">
-          <h2 className="text-lg font-semibold mb-2">PRD Generated (Placeholder)</h2>
-          <div className="p-4 bg-gray-100 rounded-lg mb-4">
-            <p>{prd}</p>
-          </div>
-          <div className="flex">
-            <input
-              type="text"
-              className="flex-1 p-2 border border-gray-300 rounded-l-lg focus:outline-none focus:ring-2 focus:ring-blue-600"
-              value={githubRepo}
-              onChange={(e) => setGithubRepo(e.target.value)}
-              placeholder="Enter GitHub Repo (e.g., your-org/your-repo)"
-              disabled
-            />
-            <button className="bg-green-600 text-white px-4 rounded-r-lg hover:bg-green-700" onClick={handleCreateTickets}>Create Tickets</button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
