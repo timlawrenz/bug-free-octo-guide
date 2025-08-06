@@ -1,0 +1,19 @@
+# Environments
+.env
+.venv
+venv/
+.env.*
+
+# Logs
+server.log
+
+# Python
+__pycache__/
+*.pyc
+
+# UI
+/ui/node_modules
+/ui/build
+.eslintcache
+ui/node_modules/.cache
+ui/node_modules/.package-lock.json

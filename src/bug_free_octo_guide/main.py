@@ -2,6 +2,8 @@ import os
 import uuid
 import logging
 import json
+import tempfile
+import shutil
 from dotenv import load_dotenv
 import google.generativeai as genai
 from fastapi import FastAPI, HTTPException
@@ -9,6 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import uvicorn
 from github import Github
+import subprocess
 
 # --- Logging Configuration ---
 logging.basicConfig(
@@ -31,16 +34,18 @@ else:
     raise SystemExit("GEMINI_API_KEY is not set.")
 
 github_token = os.getenv("GITHUB_TOKEN")
-github_repo_name = os.getenv("GITHUB_REPO")
-
-if not github_token or not github_repo_name:
-    log.error("FATAL: GITHUB_TOKEN or GITHUB_REPO not found in environment variables.")
-    raise SystemExit("GITHUB_TOKEN and GITHUB_REPO must be set.")
+if not github_token:
+    log.error("FATAL: GITHUB_TOKEN not found in environment variables.")
+    raise SystemExit("GITHUB_TOKEN must be set.")
 
 # --- Data Models ---
+class StartPlanningRequest(BaseModel):
+    feature_description: str
+    repo_url: str
+
 class ChatRequest(BaseModel):
     text: str
-    session_id: str | None = None
+    session_id: str
 
 class ChatResponse(BaseModel):
     response: str
@@ -48,6 +53,7 @@ class ChatResponse(BaseModel):
 
 class TicketRequest(BaseModel):
     prd: str
+    repo: str
 
 class TicketResponse(BaseModel):
     message: str
@@ -71,32 +77,114 @@ app.add_middleware(
 )
 log.info("CORS middleware configured.")
 
+def get_repo_context(repo_url: str) -> str:
+    """Clones a repo, reads key files, and returns a context string."""
+    temp_dir = tempfile.mkdtemp()
+    log.info(f"Cloning {repo_url} into {temp_dir}")
+    try:
+        # Clone the repo
+        auth_repo_url = repo_url.replace("https://", f"https://{github_token}@")
+        subprocess.run(["git", "clone", "--depth", "1", auth_repo_url, temp_dir], check=True)
+
+        # Read key files
+        context_parts = []
+        files_to_read = {
+            "Schema": os.path.join(temp_dir, "db", "schema.rb"),
+            "Routes": os.path.join(temp_dir, "config", "routes.rb"),
+            "Gemfile": os.path.join(temp_dir, "Gemfile"),
+            "Conventions": os.path.join(temp_dir, "conventions.md"),
+        }
+
+        for name, path in files_to_read.items():
+            if os.path.exists(path):
+                with open(path, "r") as f:
+                    content = f.read()
+                    context_parts.append(f"--- {name} ---\n{content}\n")
+        
+        return "\n".join(context_parts)
+
+    finally:
+        # Clean up the temporary directory
+        shutil.rmtree(temp_dir)
+        log.info(f"Cleaned up temporary directory: {temp_dir}")
+
+
+
+
+@app.get("/repos")
+async def get_repos():
+    """
+    Returns a list of repositories for the authenticated user.
+    """
+    log.info("Fetching repositories for the authenticated user.")
+    try:
+        g = Github(github_token)
+        repos = [repo.full_name for repo in g.get_user().get_repos()]
+        log.info(f"Found {len(repos)} repositories.")
+        return repos
+    except Exception as e:
+        log.error(f"An error occurred while fetching repositories: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="An internal error occurred while fetching repositories.")
+
+
+@app.post("/start_planning", response_model=ChatResponse)
+async def start_planning(request: StartPlanningRequest):
+    """
+    Starts a new planning session by analyzing a repo and initiating a chat.
+    """
+    log.info(f"Starting new planning session for repo: {request.repo_url}")
+    session_id = str(uuid.uuid4())
+
+    try:
+        # 1. Get repository context
+        repo_context = get_repo_context(request.repo_url)
+
+        # 2. Create the initial prompt
+        with open("prdprompt.md", "r") as f:
+            prompt_template = f.read()
+        
+        initial_prompt = (
+            prompt_template
+            .replace("{{context}}", repo_context)
+            .replace("{{feature_description}}", request.feature_description)
+        )
+
+        # 3. Start the chat session
+        model = genai.GenerativeModel('models/gemini-2.5-pro')
+        chat_session = model.start_chat(history=[
+            {'role': 'user', 'parts': [initial_prompt]}
+        ])
+        sessions[session_id] = chat_session
+        log.info(f"New chat session created for session_id: {session_id}")
+
+        # 4. Get the first message from the bot
+        response = await chat_session.send_message_async("Continue.")
+        
+        return ChatResponse(response=response.text, session_id=session_id)
+
+    except Exception as e:
+        log.error(f"An error occurred during planning session startup: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"An internal error occurred during planning session startup: {e}")
+
+
 @app.post("/chat", response_model=ChatResponse)
 async def chat(request: ChatRequest):
     """
-    Handles a chat request, maintaining conversation history using a session ID.
+    Handles a chat request for an existing session.
     """
     log.info(f"Received chat request. Session ID: {request.session_id}, Message: '{request.text}'")
-    session_id = request.session_id or str(uuid.uuid4())
-    log.info(f"Using session_id: {session_id}")
+    session_id = request.session_id
+    if not session_id or session_id not in sessions:
+        raise HTTPException(status_code=400, detail="Invalid session ID.")
 
     try:
-        if session_id not in sessions:
-            log.info(f"Creating new chat session for session_id: {session_id}")
-            model = genai.GenerativeModel('models/gemini-2.5-pro')
-            sessions[session_id] = model.start_chat(history=[])
-            log.info(f"New chat session created for session_id: {session_id}")
-
         chat_session = sessions[session_id]
-
-        log.info(f"Sending message to Gemini model for session_id: {session_id}...")
         response = await chat_session.send_message_async(request.text)
-        log.info(f"Received response from Gemini model for session_id: {session_id}.")
-
         return ChatResponse(response=response.text, session_id=session_id)
     except Exception as e:
         log.error(f"An error occurred during chat processing for session_id {session_id}: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="An internal error occurred.")
+
 
 @app.post("/create_tickets", response_model=TicketResponse)
 async def create_tickets(request: TicketRequest):
@@ -105,7 +193,7 @@ async def create_tickets(request: TicketRequest):
     """
     log.info("Received request to create tickets.")
     try:
-        # 1. Generate tickets from PRD using the TicketingAgent prompt
+        # 1. Generate tickets from PRD
         ticketing_model = genai.GenerativeModel('models/gemini-2.5-pro')
         with open("ticketprompt.md", "r") as f:
             prompt = f.read().replace("{{prd}}", request.prd)
@@ -118,7 +206,7 @@ async def create_tickets(request: TicketRequest):
 
         # 2. Create tickets in GitHub
         g = Github(github_token)
-        repo = g.get_repo(github_repo_name)
+        repo = g.get_repo(request.repo)
         ticket_urls = []
 
         for ticket in tickets:
