@@ -112,7 +112,7 @@ ${JSON.stringify(errorData, null, 2)}
         } else {
           console.error('Error sending message');
           const errorData = await response.json();
-          const errorMessage = `Error: An internal error occurred during planning session startup.\n\n\${JSON.stringify(errorData, null, 2)}\n\n`;
+          const errorMessage = `Error: An internal error occurred during planning session startup.\n\n${JSON.stringify(errorData, null, 2)}\n\n`;
           setMessages([...newMessages, { text: errorMessage, author: 'bot' }]);
         } 
       } catch (error) {
