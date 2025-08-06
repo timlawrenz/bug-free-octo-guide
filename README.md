@@ -3,6 +3,22 @@ Coding Agent
 
 This workflow transforms a high-level feature idea into a production-ready implementation, with a series of automated agents handling the majority of the work while maintaining critical human checkpoints for oversight and quality control.
 
+## Running the Application
+
+To run the application, you will need to start two servers in separate terminal sessions:
+
+1.  **Backend Server:**
+    ```bash
+    # From the project root
+    venv/bin/python src/bug_free_octo_guide/main.py
+    ```
+
+2.  **Frontend Server:**
+    ```bash
+    # From the project root
+    cd ui && npm start
+    ```
+
 ## Phase 1: Planning and Decomposition (The Orchestrator's First Act)
 The process begins when an engineer provides a high-level request to a central orchestrator script. The orchestrator's first job is to understand the task and break it down.
 - PRD Generation: The orchestrator, acting as a "Project Manager," sends a prompt to a Gemini-powered PRD Agent. This prompt contains a template of your company's tech spec document, along with a high-level feature description and any relevant context (e.g., existing models, packs). The PRD Agent's output is a detailed technical specification document.
