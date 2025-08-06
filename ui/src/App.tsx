@@ -6,7 +6,6 @@ import './App.css';
 function App() {
   const [featureDescription, setFeatureDescription] = useState('');
   const [githubRepo, setGithubRepo] = useState('');
-  const [repos, setRepos] = useState<string[]>([]);
   const [isPlanning, setIsPlanning] = useState(false);
   const [messages, setMessages] = useState<{ text: string, author: string }[]>([]);
   const [input, setInput] = useState('');
@@ -19,27 +18,6 @@ function App() {
       chatBoxRef.current.scrollTop = chatBoxRef.current.scrollHeight;
     }
   }, [messages]);
-
-  useEffect(() => {
-    const fetchRepos = async () => {
-      try {
-        const response = await fetch('http://184.72.72.233:8000/repos');
-        if (response.ok) {
-          const data = await response.json();
-          setRepos(data);
-          if (data.length > 0) {
-            setGithubRepo(data[0]);
-          }
-        } else {
-          console.error('Error fetching repos');
-        }
-      } catch (error) {
-        console.error('Error fetching repos:', error);
-      }
-    };
-
-    fetchRepos();
-  }, []);
 
   const handleStartPlanning = async () => {
     if (featureDescription.trim() && githubRepo.trim()) {
@@ -156,16 +134,13 @@ ${data.ticket_urls.join('\n')}`);
           </div>
           <div>
             <label htmlFor="repo" className="text-sm font-medium text-gray-700">GitHub Repository</label>
-            <select
+            <input
               id="repo"
               className="w-full p-2 mt-1 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600"
               value={githubRepo}
               onChange={(e) => setGithubRepo(e.target.value)}
-            >
-              {repos.map(repo => (
-                <option key={repo} value={repo}>{repo}</option>
-              ))}
-            </select>
+              placeholder="e.g., timlawrenz/herLens"
+            />
           </div>
           <button
             className="w-full py-2 text-white bg-blue-600 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
