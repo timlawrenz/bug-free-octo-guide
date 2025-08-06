@@ -52,7 +52,8 @@ ${JSON.stringify(errorData, null, 2)}
         }
       } catch (error) {
         console.error('Error starting planning session:', error);
-        setMessages(prevMessages => [...prevMessages, { text: 'Error: Could not connect to the server to start planning.', author: 'bot' }]);
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        setMessages(prevMessages => [...prevMessages, { text: `Error: Could not connect to the server to start planning. ${errorMessage}`, author: 'bot' }]);
       }
     }
   };
@@ -82,11 +83,14 @@ ${JSON.stringify(errorData, null, 2)}
           }
         } else {
           console.error('Error sending message');
-          setMessages([...newMessages, { text: 'Error: Could not connect to the server.', author: 'bot' }]);
-        }
+          const errorData = await response.json();
+          const errorMessage = `Error: An internal error occurred during planning session startup.\n\n\${JSON.stringify(errorData, null, 2)}\n\n`;
+          setMessages([...newMessages, { text: errorMessage, author: 'bot' }]);
+        } 
       } catch (error) {
         console.error('Error sending message:', error);
-        setMessages([...newMessages, { text: 'Error: Could not connect to the server.', author: 'bot' }]);
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        setMessages([...newMessages, { text: `Error: Could not connect to the server. ${errorMessage}`, author: 'bot' }]);
       }
     }
   };
@@ -112,7 +116,8 @@ ${data.ticket_urls.join('\n')}`);
         }
       } catch (error) {
         console.error('Error creating tickets:', error);
-        alert('An error occurred while creating tickets.');
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        alert(`An error occurred while creating tickets: ${errorMessage}`);
       }
     }
   };
