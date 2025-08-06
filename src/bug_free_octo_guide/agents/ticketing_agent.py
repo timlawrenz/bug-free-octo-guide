@@ -1,13 +1,17 @@
-from google.adk.agents import Agent
+from google.adk.agents import LlmAgent
 from google.adk.models.base_llm import BaseLlm
-from google.adk.tools.base_tool import BaseTool
-from google.genai import types
 import os
 
-class TicketingAgent(Agent):
+class TicketingAgent(LlmAgent):
+    _prd: str
+
     def __init__(self, llm: BaseLlm, prd: str):
-        super().__init__(llm=llm)
-        self._prd = prd
+        super().__init__(
+            model=llm,
+            name="ticketing_agent",
+            instruction="You are a project manager. Your task is to break down the following Product Requirements Document (PRD) into a set of actionable tickets.",
+            _prd=prd
+        )
 
     def load_prompt(self) -> str:
         """

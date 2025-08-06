@@ -16,4 +16,4 @@ __pycache__/
 /ui/build
 .eslintcache
 ui/node_modules/.cache
-ui/node_modules/.package-lock.json
+ui/node_modules/.package-lock.jsonerror.log

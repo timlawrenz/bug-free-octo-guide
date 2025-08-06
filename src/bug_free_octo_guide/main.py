@@ -66,9 +66,18 @@ log.info("In-memory ADK services initialized.")
 app = FastAPI()
 log.info("FastAPI application created.")
 
+origins = [
+    "http://localhost",
+    "http://localhost:3000",
+    "http://127.0.0.1",
+    "http://127.0.0.1:3000",
+    "http://184.72.72.233",
+    "http://184.72.72.233:3000",
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -143,12 +152,11 @@ async def chat(request: ChatRequest):
         if event.content:
             response_content += event.content.parts[0].text
 
-    # Save the PRD as an artifact
-    await artifact_service.save_artifact(
-        session_id=session_id,
-        artifact_name="prd.md",
-        content=response_content.encode("utf-8")
-    )
+    # # Save the PRD as an artifact
+    # await runner.save_artifact(
+    #     "prd.md",
+    #     response_content.encode("utf-8")
+    # )
     log.info(f"PRD generated and saved for session {session_id}.")
 
     return {"response": response_content, "session_id": session_id}

@@ -7,12 +7,12 @@ This workflow transforms a high-level feature idea into a production-ready imple
 
 To run the application, you will need to start two servers in separate terminal sessions:
 
-1.  **Backend Server:**
+1.  **Backend Server (for development):**
     ```bash
     # From the project root
-    venv/bin/python -m src.bug_free_octo_guide.main
+    venv/bin/uvicorn src.bug_free_octo_guide.main:app --reload --host 0.0.0.0
     ```
-    The backend server will be available at `http://0.0.0.0:8000`.
+    The backend server will be available at `http://0.0.0.0:8000` and will automatically restart when code changes are detected.
 
 2.  **Frontend Server:**
     ```bash

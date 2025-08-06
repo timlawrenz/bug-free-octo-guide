@@ -1,13 +1,18 @@
-from google.adk.agents import Agent
+import os
+from google.adk.agents import LlmAgent
 from google.adk.models.base_llm import BaseLlm
-from google.adk.tools.base_tool import BaseTool
-from google.genai import types
+import os
 
-class PrdAgent(Agent):
+class PrdAgent(LlmAgent):
+    feature_description: str
+
     def __init__(self, llm: BaseLlm, feature_description: str):
-        super().__init__(llm=llm)
-        self.feature_description = feature_description
-        self.tools: list[BaseTool] = []
+        super().__init__(
+            model=llm,
+            name="prd_agent",
+            instruction="You are a product manager. Your task is to write a Product Requirements Document (PRD) based on the provided feature description.",
+            feature_description=feature_description
+        )
 
     def load_prompt(self) -> str:
         """
