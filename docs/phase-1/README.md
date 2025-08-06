@@ -27,6 +27,15 @@ The backend is a **FastAPI** server written in Python. It manages the entire pla
     *   It then uses the `PyGithub` library to create these tickets in the target GitHub repository.
     *   *Note: This functionality has been temporarily removed from the UI to simplify the user experience and address some frontend bugs.*
 
+5.  **PRD Artifacts:**
+    *   Generated PRDs are saved to the `artifacts/prd` directory.
+    *   Each PRD is saved with a unique filename that includes a timestamp and a sanitized version of the feature description (e.g., `20250806-123000-implement-dark-mode.md`).
+
+6.  **PRD Agent Refactoring:**
+    *   The `PrdAgent` has been refactored to use a tool-based approach for generating and saving PRD artifacts. This is the correct way to handle artifact saving with the Google ADK.
+    *   The `generate_prd` method in the `PrdAgent` now handles the file saving logic directly.
+    *   The `/chat` endpoint in `main.py` has been updated to correctly call the `PrdAgent` with the new tool-based approach.
+
 ### Frontend (`ui` directory)
 
 The frontend is a **React** and **TypeScript** application styled with **Tailwind CSS**.

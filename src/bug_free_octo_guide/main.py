@@ -106,12 +106,18 @@ async def chat(request: ChatRequest):
     if "approve" in message.lower():
         log.info(f"PRD approved for session {session_id}. Starting ticketing.")
         # Retrieve the PRD from the artifact service
-        artifacts = await artifact_service.list_artifacts(session_id=session_id)
-        prd_artifact = next((a for a in artifacts if a.name == "prd.md"), None)
+        artifact_keys = await artifact_service.list_artifact_keys(
+            session_id=session_id,
+            app_name="bug-free-octo-guide",
+            user_id="user123"
+        )
+        prd_artifact_key = next((key for key in artifact_keys if "prd" in key.name), None)
 
-        if not prd_artifact:
+        if not prd_artifact_key:
             log.error(f"PRD artifact not found for session {session_id}")
             return {"response": "PRD not found. Please generate a PRD first.", "session_id": session_id}
+
+        prd_artifact = await artifact_service.load_artifact(session_id=session_id, name=prd_artifact_key.name)
 
         prd_content = prd_artifact.content.decode("utf-8")
 
@@ -124,7 +130,7 @@ async def chat(request: ChatRequest):
             app_name="bug-free-octo-guide",
         )
         response_content = ""
-        async for event in runner.run_async(session_id=session_id, user_id="user123"):
+        async for event in runner.run_async(session_id=session_id, user_id="user123", prd=prd_content):
             if event.content:
                 response_content += event.content.parts[0].text
         
@@ -152,11 +158,6 @@ async def chat(request: ChatRequest):
         if event.content:
             response_content += event.content.parts[0].text
 
-    # # Save the PRD as an artifact
-    # await runner.save_artifact(
-    #     "prd.md",
-    #     response_content.encode("utf-8")
-    # )
     log.info(f"PRD generated and saved for session {session_id}.")
 
     return {"response": response_content, "session_id": session_id}
