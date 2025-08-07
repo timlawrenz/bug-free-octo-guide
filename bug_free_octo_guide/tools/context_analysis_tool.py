@@ -13,24 +13,40 @@
 # limitations under the License.
 
 import os
+import re
 import subprocess
 import tempfile
+import logging
 
-def analyze_repo(repo_url: str) -> dict:
+def analyze_repo(prompt: str) -> dict:
     """
     Analyzes a GitHub repository by cloning it and summarizing key files.
     The analysis is considered successful even if no specific files are found,
     as long as the repository is successfully cloned.
     """
+    match = re.search(r"https://github.com/[\w-]+/[\w-]+", prompt)
+    if not match:
+        return {
+            "success": False,
+            "error": "Could not find a GitHub repository URL in the prompt."
+        }
+    repo_url = match.group(0)
+
     with tempfile.TemporaryDirectory() as tmpdir:
         try:
+            logging.info(f"Cloning repository: {repo_url}")
+            env = os.environ.copy()
+            env["GIT_TERMINAL_PROMPT"] = "0"
             subprocess.run(
                 ["git", "clone", "--depth", "1", repo_url, tmpdir],
                 check=True,
                 capture_output=True,
                 text=True,
+                env=env,
             )
+            logging.info("Repository cloned successfully.")
         except subprocess.CalledProcessError as e:
+            logging.error(f"Failed to clone repository: {e.stderr}")
             return {
                 "success": False,
                 "error": f"Failed to clone repository: {e.stderr}"
