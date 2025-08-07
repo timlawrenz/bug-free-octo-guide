@@ -1,6 +1,6 @@
-# Phase 1: Command-Line Context Analysis
+# Phase 1: A Tool-Based Agent for Context Analysis
 
-This phase transforms a high-level feature idea into a detailed, project-specific technical specification (PRD) and a set of actionable engineering tickets. The key to this phase is a **pre-analysis step** that makes the agent context-aware, ensuring the generated PRD is grounded in the reality of the target codebase.
+This phase focuses on creating a robust, tool-based agent that can analyze a remote Git repository to provide context for future development tasks.
 
 ## Architecture
 
@@ -37,17 +37,50 @@ sequenceDiagram
 
 ## Testing
 
-Due to limitations discovered in the `google-adk` library regarding the programmatic import and instantiation of its core components (`Planner`, `Agent`), a traditional unit testing approach was not feasible.
+Due to limitations discovered in the `google-adk` library regarding the programmatic import and instantiation of its core components, a traditional unit testing approach was not feasible.
 
 The project has instead adopted a robust, end-to-end testing strategy:
 
 *   **`pytest` and `subprocess`:** Tests are written using the `pytest` framework.
 *   **End-to-End Verification:** The tests use Python's `subprocess` module to run the agent as a separate process, exactly as a user would.
-*   **Automated I/O:** The test script provides input to the agent's `stdin` and captures the output from its `stdout` and `stderr`.
-*   **Behavioral Assertions:** The test then makes assertions about the agent's output to verify its behavior, ensuring the `analyze_repo` tool is called correctly and produces the expected results.
+*   **Automated I/O:** The test script provides input to the agent's `stdin` and captures the output from its `stdout`.
+*   **Behavioral Assertions:** The test then makes assertions about the agent's output to verify its behavior.
 
 This method provides reliable verification of the agent's complete functionality.
 
-## Next Steps
+## Next Steps: A Hierarchical Agent Architecture
 
-The immediate next step is to build upon this foundation. Now that the context analysis is working and tested, we will proceed with implementing the PRD and ticket generation capabilities as described in the project's main `README.md`.
+The next phase of development will focus on building a more sophisticated, multi-agent system based on a hierarchy of planners and specialized agents. This will allow us to tackle the more complex tasks of PRD generation and code implementation.
+
+### 1. Phase: PRD & Planning
+**Oversight Agent: `PrdOrchestratorAgent`**
+This agent will be the "Product Manager" of the team. Its sole responsibility is to oversee the creation of a high-quality, context-aware Product Requirements Document (PRD).
+
+*   **Agent Type:** **Planner-based Agent**.
+*   **Sub-Agents / Tools:**
+    *   **`ContextAnalysisTool`**: Our existing `analyze_repo` function.
+    *   **`ClarificationAgent`**: A conversational agent for user dialogue.
+    *   **`UserStoryAgent`**: A specialized agent for generating user stories.
+    *   **`TechSpecAgent`**: A specialized agent for generating technical specifications.
+    *   **`PrdWriterAgent`**: An agent for formatting the final PRD.
+
+### 2. Phase: Implementation
+**Oversight Agent: `ImplementationOrchestratorAgent`**
+This agent will act as the "Engineering Manager" or "Tech Lead." It will take the list of tickets from the PRD phase and ensure each one is implemented correctly.
+
+*   **Agent Type:** **Planner-based Agent**.
+*   **Sub-Agents / Tools:**
+    *   **`CodingAgent`**: The "Software Engineer" agent (a powerful Tool-based ReAct Agent).
+    *   **`ReviewAgent`**: The "Code Reviewer" agent.
+    *   **`HumanCheckpointTool`**: A tool to pause for user approval.
+
+### 3. Phase: Validation
+**Oversight Agent: `ValidationOrchestratorAgent`**
+This agent will be the "Quality Assurance" lead. Its job is to verify that the implemented code meets the original high-level goal.
+
+*   **Agent Type:** **Tool-based Agent**.
+*   **Tools:**
+    *   **`TestExecutionTool`**: A tool to run the target application's test suite.
+    *   **`GoalVerificationAgent`**: A final agent to verify that the implementation satisfies the user's request.
+
+This hierarchical structure will provide a robust and scalable foundation for the project's future development.
