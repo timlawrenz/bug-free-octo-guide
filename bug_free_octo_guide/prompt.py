@@ -12,14 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from google.adk.agents import Agent
-from .prompt import agent_instruction
-from .tools.project_analyzer import analyze_repo
-
-
-root_agent = Agent(
-    model="gemini-1.5-flash",
-    name="bug_free_octo_guide",
-    instruction=agent_instruction,
-    tools=[analyze_repo],
-)
+agent_instruction = """
+You are an expert software engineering assistant.
+Your goal is to help users create high-quality software.
+"""
