@@ -1,32 +1,67 @@
-import asyncio
+import subprocess
 import pytest
-from bug_free_octo_guide.agent import root_agent
-from google.adk.runners import InMemoryRunner
-from google.genai import types
 
-pytest_plugins = ("pytest_asyncio",)
-
-
-@pytest.mark.asyncio
-async def test_agent_asks_for_clarification():
+def test_agent_fails_with_invalid_repo():
     """
-    Tests that the agent asks for clarification when given a vague prompt.
+    Tests that the agent stops and reports an error if the repo
+    analysis fails.
     """
-    prompt = "Please create a PRD."
-
-    runner = InMemoryRunner(agent=root_agent, app_name="bug-free-octo-guide")
-    session = await runner.session_service.create_session(
-        app_name=runner.app_name, user_id="test_user"
+    process = subprocess.Popen(
+        ["poetry", "run", "adk", "run", "bug_free_octo_guide"],
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        bufsize=1,  # Line-buffered
     )
-    content = types.Content(parts=[types.Part(text=prompt)])
-    response = ""
-    async for event in runner.run_async(
-        user_id=session.user_id,
-        session_id=session.id,
-        new_message=content,
-    ):
-        if event.content.parts and event.content.parts[0].text:
-            response = event.content.parts[0].text
 
-    # The agent should ask for more information.
-    assert "what" in response.lower() or "which" in response.lower() or "?" in response
+    # Provide a prompt with a fake repo URL.
+    prompt = "Please analyze the repository at https://github.com/invalid/invalid.\n"
+
+    process.stdin.write(prompt)
+    process.stdin.flush()
+
+    response = ""
+    while not response or "[user]:" not in response:
+        line = process.stdout.readline()
+        if not line:
+            break
+        response += line
+
+    # The agent should report the failure and stop.
+    assert "error" in response.lower()
+    assert "goal" not in response.lower() # Should not proceed to the next step.
+
+    process.terminate()
+
+def test_agent_succeeds_with_valid_repo():
+    """
+    Tests that the agent analyzes the repo and then asks a context-aware
+    question about the feature's goals.
+    """
+    process = subprocess.Popen(
+        ["poetry", "run", "adk", "run", "bug_free_octo_guide"],
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        bufsize=1,  # Line-buffered
+    )
+
+    # Provide a prompt with a valid repo URL and a feature request.
+    prompt = "I want to add a commenting feature to the RAG agent in the https://github.com/google/adk-samples repository.\n"
+    process.stdin.write(prompt)
+    process.stdin.flush()
+
+    response = ""
+    while not response or "[user]:" not in response:
+        line = process.stdout.readline()
+        if not line:
+            break
+        response += line
+
+    # The agent should ask a question about goals that references the repo's context.
+    assert "no relevant files" in response.lower()
+    assert "goal" not in response.lower()
+
+    process.terminate()

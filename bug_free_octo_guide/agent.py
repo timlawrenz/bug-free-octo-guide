@@ -15,24 +15,24 @@
 from google.adk.agents import LlmAgent
 from google.adk.models import Gemini
 from google.adk.tools.agent_tool import AgentTool
-from .agents.prd_writer_agent import PrdWriterAgent
+from .agents.goals_agent import GoalsAgent
+from .agents.solution_proposal_agent import SolutionProposalAgent
 from .tools.context_analysis_tool import analyze_repo
 
-# The "root_agent" is the entry point to your agent.
-#
-# This agent is an "LlmAgent" that acts as a planner. It is responsible
-# for breaking down a complex task into a series of smaller, more
-# manageable steps. It then delegates these steps to other agents or tools.
 root_agent = LlmAgent(
     model=Gemini(),
     name="bug_free_octo_guide",
     instruction=(
-        "You are a project manager. Your goal is to create a PRD. "
-        "First, analyze the provided repository to understand the project context. "
-        "Then, use the `PrdWriterAgent` to create a PRD based on the user's request and the repository context."
+        "You are a project manager orchestrating the creation of a PRD. "
+        "Your first step is to ALWAYS analyze the user's repository to gather context. "
+        "If the user does not provide a repository URL, you MUST ask for one. "
+        "When you call the `analyze_repo` tool, you MUST check the 'success' flag in the result. "
+        "If the analysis is not successful, you MUST report the error to the user and STOP. "
+        "If the analysis is successful, and only then, you may proceed by delegating the conversation to the `GoalsAgent`."
     ),
     tools=[
         analyze_repo,
-        AgentTool(agent=PrdWriterAgent(llm=Gemini())),
+        AgentTool(agent=GoalsAgent(llm=Gemini())),
+        AgentTool(agent=SolutionProposalAgent(llm=Gemini())),
     ],
 )
