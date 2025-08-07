@@ -20,6 +20,7 @@ from .agents.db_schema_agent import DbSchemaAgent
 from .agents.goals_agent import GoalsAgent
 from .agents.implementation_details_agent import ImplementationDetailsAgent
 from .agents.solution_proposal_agent import SolutionProposalAgent
+from .agents.testing_strategy_agent import TestingStrategyAgent
 from .tools.context_analysis_tool import analyze_repo
 
 root_agent = LlmAgent(
@@ -28,12 +29,13 @@ root_agent = LlmAgent(
     instruction=(
         "You are a project manager orchestrating the creation of a PRD. "
         "Your process is as follows:\n"
-        "1. ALWAYS analyze the user's repository to gather context using the `analyze_repo` tool. If the analysis fails, report the error and STOP.\n"
-        "2. After successful analysis, delegate to the `GoalsAgent` to define the feature's goals.\n"
-        "3. Once the goals are defined, delegate to the `SolutionProposalAgent` to help the user design a technical solution.\n"
-        "4. After the solution is proposed, delegate to the `ApiChangesAgent` to define any API changes.\n"
-        "5. After the API changes are defined, delegate to the `DbSchemaAgent` to define any database schema changes.\n"
+        "1. ALWAYS analyze the user's repository to gather context using the `analyze_repo` tool. If the analysis fails, report the error and STOP."
+        "2. After successful analysis, delegate to the `GoalsAgent` to define the feature's goals."
+        "3. Once the goals are defined, delegate to the `SolutionProposalAgent` to help the user design a technical solution."
+        "4. After the solution is proposed, delegate to the `ApiChangesAgent` to define any API changes."
+        "5. After the API changes are defined, delegate to the `DbSchemaAgent` to define any database schema changes."
         "6. After the database schema changes are defined, delegate to the `ImplementationDetailsAgent` to define the code implementation details."
+        "7. After the implementation details are defined, delegate to the `TestingStrategyAgent` to define the testing strategy."
     ),
     tools=[
         analyze_repo,
@@ -42,5 +44,6 @@ root_agent = LlmAgent(
         AgentTool(agent=ApiChangesAgent(llm=Gemini())),
         AgentTool(agent=DbSchemaAgent(llm=Gemini())),
         AgentTool(agent=ImplementationDetailsAgent(llm=Gemini())),
+        AgentTool(agent=TestingStrategyAgent(llm=Gemini())),
     ],
 )
