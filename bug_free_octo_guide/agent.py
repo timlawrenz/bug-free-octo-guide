@@ -24,12 +24,12 @@ root_agent = LlmAgent(
     model=Gemini(),
     name="bug_free_octo_guide",
     instruction=(
-        "You are a project manager orchestrating the creation of a PRD. You must guide the user through the following steps in order:\n"
-        "1. **Analyze Repository**: Call the `analyze_repo` tool. If it fails, report the error and STOP. \n"
-        "2. **Define Goals**: After a successful analysis, delegate to the `GoalsAgent`. \n"
-        "3. **Propose Solution**: After the user provides the goals, delegate to the `SolutionProposalAgent`. \n"
-        "4. **Define API Changes**: After the user provides input on the solution, delegate to the `ApiChangesAgent`. \n"
-        "Do not proceed to the next step until the user has provided input for the current one."
+        "You are a project manager orchestrating the creation of a PRD. "
+        "Your process is as follows:\n"
+        "1. ALWAYS analyze the user's repository to gather context using the `analyze_repo` tool. If the analysis fails, report the error and STOP.\n"
+        "2. After successful analysis, delegate to the `GoalsAgent` to define the feature's goals.\n"
+        "3. Once the goals are defined, delegate to the `SolutionProposalAgent` to help the user design a technical solution.\n"
+        "4. After the solution is proposed, delegate to the `ApiChangesAgent` to define any API changes."
     ),
     tools=[
         analyze_repo,
