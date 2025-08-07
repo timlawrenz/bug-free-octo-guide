@@ -19,12 +19,8 @@ import tempfile
 def analyze_repo(repo_url: str) -> dict:
     """
     Analyzes a GitHub repository by cloning it and summarizing key files.
-
-    Args:
-        repo_url: The URL of the GitHub repository to analyze.
-
-    Returns:
-        A dictionary containing the analysis results, including a success flag.
+    The analysis is considered successful even if no specific files are found,
+    as long as the repository is successfully cloned.
     """
     with tempfile.TemporaryDirectory() as tmpdir:
         try:
@@ -47,23 +43,14 @@ def analyze_repo(repo_url: str) -> dict:
             "Gemfile",
             "conventions.md",
         ]
-        files_found = 0
 
         for file_path in files_to_summarize:
             full_path = os.path.join(tmpdir, file_path)
             if os.path.exists(full_path):
                 with open(full_path, "r") as f:
                     summaries[file_path] = "".join(f.readlines()[:20])
-                    files_found += 1
             else:
                 summaries[file_path] = "File not found."
-
-        if files_found == 0:
-            return {
-                "success": False,
-                "error": "Analysis failed: No relevant files (schema.rb, routes.rb, Gemfile, conventions.md) were found in the repository.",
-                "summaries": summaries
-            }
 
         return {
             "success": True,

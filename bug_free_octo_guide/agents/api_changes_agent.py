@@ -16,10 +16,10 @@ from google.adk.agents import LlmAgent
 from google.adk.models.base_llm import BaseLlm
 
 
-class GoalsAgent(LlmAgent):
+class ApiChangesAgent(LlmAgent):
     def __init__(self, llm: BaseLlm):
         super().__init__(
             model=llm,
-            name="goals_agent",
-            instruction="You are a product manager. Your task is to help a user define the goals for a new feature. Start by asking one clarifying question about the user's objectives.",
+            name="api_changes_agent",
+            instruction="You are a senior software engineer. Your task is to help a user define the API changes for a new feature. Discuss new or modified endpoints, request/response schemas, versioning, and error handling, keeping the project's conventions in mind.",
         )

@@ -21,5 +21,5 @@ class SolutionProposalAgent(LlmAgent):
         super().__init__(
             model=llm,
             name="solution_proposal_agent",
-            instruction="You are a senior software engineer. Your task is to help a user design a technical solution for a new feature, based on the feature's goals. Guide them on the overall design, user flows, and system interactions, keeping the project's conventions in mind.",
+            instruction="You are a senior software engineer. Your task is to propose a technical solution for a new feature, based on the feature's goals. Propose a solution that includes the overall design, user flows, and system interactions, keeping the project's conventions in mind.",
         )

@@ -15,6 +15,7 @@
 from google.adk.agents import LlmAgent
 from google.adk.models import Gemini
 from google.adk.tools.agent_tool import AgentTool
+from .agents.api_changes_agent import ApiChangesAgent
 from .agents.goals_agent import GoalsAgent
 from .agents.solution_proposal_agent import SolutionProposalAgent
 from .tools.context_analysis_tool import analyze_repo
@@ -23,15 +24,17 @@ root_agent = LlmAgent(
     model=Gemini(),
     name="bug_free_octo_guide",
     instruction=(
-        "You are a project manager orchestrating the creation of a PRD. "
-        "Your process is as follows:\n" 
-        "1. ALWAYS analyze the user's repository to gather context using the `analyze_repo` tool. If the analysis fails, report the error and STOP.\n" 
-        "2. After successful analysis, delegate to the `GoalsAgent` to define the feature's goals.\n" 
-        "3. Once the goals are defined, delegate to the `SolutionProposalAgent` to help the user design a technical solution."
+        "You are a project manager orchestrating the creation of a PRD. You must guide the user through the following steps in order:\n"
+        "1. **Analyze Repository**: Call the `analyze_repo` tool. If it fails, report the error and STOP. \n"
+        "2. **Define Goals**: After a successful analysis, delegate to the `GoalsAgent`. \n"
+        "3. **Propose Solution**: After the user provides the goals, delegate to the `SolutionProposalAgent`. \n"
+        "4. **Define API Changes**: After the user provides input on the solution, delegate to the `ApiChangesAgent`. \n"
+        "Do not proceed to the next step until the user has provided input for the current one."
     ),
     tools=[
         analyze_repo,
         AgentTool(agent=GoalsAgent(llm=Gemini())),
         AgentTool(agent=SolutionProposalAgent(llm=Gemini())),
+        AgentTool(agent=ApiChangesAgent(llm=Gemini())),
     ],
 )
