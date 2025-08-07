@@ -1,58 +1,58 @@
-# Phase 1: A Hierarchical Agent for PRD Generation
+# Phase 1: A Hierarchical Agent for Collaborative PRD Generation
 
-This phase focuses on creating a robust, hierarchical agent that can analyze a remote Git repository and generate a Product Requirements Document (PRD).
+This phase focuses on creating a robust, hierarchical agent that collaboratively generates a Product Requirements Document (PRD) by guiding a user through a series of structured sections, based on the detailed process outlined in `prdprompt.md`.
 
 ## Architecture
 
-The project is a command-line application built using the **Google Agent Development Kit (ADK)** in Python. It is designed to be run interactively from the terminal.
+The project is a command-line application built using the **Google Agent Development Kit (ADK)** in Python. It follows a hierarchical, multi-agent architecture where a central orchestrator delegates tasks to specialized sub-agents.
 
-The agent follows a hierarchical architecture, with a central orchestrator agent that delegates tasks to specialized sub-agents and tools.
-
-1.  **`bug_free_octo_guide` (Orchestrator Agent):**
-    *   This is the core of the application, defined as an `LlmAgent` within the ADK framework.
-    *   It acts as a "Project Manager," responsible for orchestrating the PRD generation process.
+1.  **`PrdOrchestratorAgent` (Orchestrator):**
+    *   This is the core of the application, defined as an `LlmAgent`.
+    *   It acts as a "Tech Lead," responsible for orchestrating the PRD generation process by invoking a series of specialized sub-agents in the correct order.
     *   It is invoked by running `poetry run adk run bug_free_octo_guide` from the project root.
 
-2.  **Sub-Agents and Tools:**
-    *   **`analyze_repo` (Tool):** A Python function that takes a GitHub repository URL as input, clones the repository, and summarizes key files to provide project context.
-    *   **`PrdWriterAgent` (Sub-Agent):** An `LlmAgent` wrapped in an `AgentTool`. Its sole responsibility is to write the PRD based on the user's request and the context provided by the `analyze_repo` tool.
+2.  **Specialized Sub-Agents (The Team):**
+    *   Instead of a single monolithic PRD writer, the orchestrator uses a suite of focused sub-agents, each responsible for a specific section of the PRD as defined in `prdprompt.md`.
+    *   Each sub-agent is an `LlmAgent` wrapped in an `AgentTool`, allowing the orchestrator to delegate tasks.
+    *   This modular approach allows for highly specific prompting and logic for each part of the PRD creation process.
 
 ## Interaction Flow
 
-The user interacts with the agent directly through the command line.
+The user interacts with the orchestrator, which in turn manages the conversation with the various sub-agents to build the PRD section by section.
 
 ```mermaid
 sequenceDiagram
     participant User (Terminal)
     participant Orchestrator (LlmAgent)
-    participant Rails Repo (Git)
-    participant PrdWriter (LlmAgent)
+    participant GoalsAgent (Sub-Agent)
+    participant SolutionAgent (Sub-Agent)
+    participant ...
 
-    User (Terminal)->>+Orchestrator (LlmAgent): poetry run adk run bug_free_octo_guide
-    Orchestrator (LlmAgent)-->>-User (Terminal): Running agent bug_free_octo_guide, type exit to exit.
-    
     User (Terminal)->>+Orchestrator (LlmAgent): Please create a PRD for a new feature.
-    Orchestrator (LlmAgent)->>+Rails Repo (Git): analyze_repo
-    Rails Repo (Git)-->>-Orchestrator (LlmAgent): Returns repository context
-    Orchestrator (LlmAgent)->>+PrdWriter (LlmAgent): Write a PRD with the following context...
-    PrdWriter (LlmAgent)-->>-Orchestrator (LlmAgent): Returns PRD
-    Orchestrator (LlmAgent)-->>-User (Terminal): Here is the PRD for the new feature...
+    Orchestrator (LlmAgent)->>+GoalsAgent (Sub-Agent): Help the user define the Goals & Non-Goals.
+    GoalsAgent (Sub-Agent)-->>User (Terminal): What are the primary objectives?
+    User (Terminal)-->>GoalsAgent (Sub-Agent): The objective is to increase user engagement.
+    GoalsAgent (Sub-Agent)-->>-Orchestrator (LlmAgent): Returns defined goals.
+
+    Orchestrator (LlmAgent)->>+SolutionAgent (Sub-Agent): Help the user design a solution based on these goals...
+    SolutionAgent (Sub-Agent)-->>User (Terminal): Based on the goal of engagement, how about a like button?
+    User (Terminal)-->>SolutionAgent (Sub-Agent): Yes, a like button sounds good.
+    SolutionAgent (Sub-Agent)-->>-Orchestrator (LlmAgent): Returns solution proposal.
+    
+    Orchestrator (LlmAgent)->>...: Continues for all PRD sections...
 ```
 
 ## Testing
 
-The project has adopted a robust, end-to-end testing strategy using the `InMemoryRunner` provided by the `google-adk` library.
+The project uses the `InMemoryRunner` provided by the `google-adk` library for robust end-to-end testing.
 
-*   **`pytest` and `pytest-asyncio`:** Tests are written using the `pytest` framework and the `pytest-asyncio` plugin for handling asynchronous code.
-*   **`InMemoryRunner`:** The tests use the `InMemoryRunner` to run the agent in memory, exactly as it would run in a production environment.
-*   **Behavioral Assertions:** The tests make assertions about the agent's output to verify its behavior, such as ensuring that it asks for clarification when given a vague prompt.
+*   **`pytest` and `pytest-asyncio`:** Tests are written using the `pytest` framework.
+*   **`InMemoryRunner`:** Tests run the agent in a realistic, in-memory environment.
+*   **Behavioral Assertions:** Tests verify the agent's behavior, such as its ability to ask appropriate clarifying questions for each PRD section, rather than asserting on exact string outputs.
 
-This method provides reliable verification of the agent's complete functionality and aligns with the best practices demonstrated in the `adk-samples` repository.
+## Next Steps: Implementing the Sub-Agent Hierarchy
 
-## Next Steps: Expanding the Hierarchy
+The immediate plan is to build out the sub-agent hierarchy, starting with the first interactive step in the PRD process.
 
-The next phase of development will focus on expanding the hierarchy of sub-agents to create a more detailed and comprehensive PRD.
-
-*   **`ClarificationAgent`**: A conversational agent for user dialogue.
-*   **`UserStoryAgent`**: A specialized agent for generating user stories.
-*   **`TechSpecAgent`**: A specialized agent for generating technical specifications.
+1.  **`GoalsAgent`**: The first sub-agent to be implemented. It will be responsible for collaborating with the user to define the "Goals & Non-Goals" of the feature.
+2.  **Further Sub-Agents**: Subsequent agents, such as `SolutionProposalAgent`, `ApiChangesAgent`, and `TestingStrategyAgent`, will be implemented to handle the remaining sections of the PRD, each one building on the context gathered by the previous agents.
