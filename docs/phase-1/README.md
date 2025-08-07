@@ -82,3 +82,42 @@ sequenceDiagram
 ## Next Steps
 
 The immediate next step is to implement this new architecture, starting with the UI changes to collect the repository URL upfront.
+
+## Proposed Architecture: Nested Planners
+
+The workflow described in the project's main `README.md` is not a single, linear process, but a series of nested loops and correction cycles. To model this complex, multi-phase workflow effectively within the `google-adk` framework, a nested planner architecture is proposed.
+
+A single, monolithic planner would become incredibly complex and difficult to manage. By breaking the problem down into a hierarchy of planners, we gain several advantages:
+
+*   **Modularity and Separation of Concerns:** Each planner can be responsible for a single phase or loop (e.g., `PrdPlanner`, `ImplementationPlanner`, `ValidationPlanner`). This makes the code cleaner, easier to understand, and simpler to debug.
+*   **Mirrors the Architecture:** The code structure will directly mirror the logical flow shown in the diagram, making the implementation intuitive.
+*   **State Management:** Each planner can manage the state relevant to its specific phase, without needing to be aware of the entire application's state.
+*   **Reusability:** A well-defined `ImplementationPlanner` could potentially be reused for different features or even in other projects.
+
+### Planner Hierarchy
+
+Here is how the application could be structured using nested planners, directly mapping to the documented phases:
+
+1.  **`MasterPlanner` (The Top-Level Orchestrator):** This would be the main planner for the root agent. Its job is to execute the major phases of the project.
+    *   **Step 1:** Execute the `PrdPlanner`.
+    *   **Step 2:** Execute the `ImplementationPlanner` (which would handle the loop of all tickets).
+    *   **Step 3:** Execute the `ValidationPlanner`.
+    *   **Step 4:** (Conditional) If validation fails, loop back to Step 2 with new tickets.
+
+2.  **`PrdPlanner`:** This is what we've already started building. It would be invoked by the `MasterPlanner`.
+    *   **Step 1:** `ClarificationAgent`
+    *   **Step 2:** `UserStoryAgent`
+    *   **Step 3:** `TechSpecAgent`
+    *   **Step 4:** `PrdDraftAgent`
+    *   **Step 5:** Human Checkpoint (pausing for approval before the `MasterPlanner` continues).
+
+3.  **`ImplementationPlanner`:** This planner would manage the entire coding and review process for a set of tickets.
+    *   **Step 1:** For each ticket, invoke a `CodingAgent` (the "Copilot Agent"). This agent would have its own internal self-correction loop.
+    *   **Step 2:** After the `CodingAgent` succeeds, invoke a `ReviewAgent`.
+    *   **Step 3:** Pause for the Human Checkpoint (the PR review). If feedback is given, this planner would loop back to Step 1 for that ticket.
+
+4.  **`ValidationPlanner`:** This planner would handle the final goal verification.
+    *   **Step 1:** Invoke a `GoalVerificationAgent` (the "Master Agent").
+    *   **Step 2:** Based on the output, either signal completion or generate new tickets for the `MasterPlanner` to loop with.
+
+This structure creates a powerful, scalable, and maintainable agent that accurately reflects the sophisticated workflow designed for this project.
