@@ -44,11 +44,12 @@ sequenceDiagram
 
 ## Testing
 
-The project uses the `InMemoryRunner` provided by the `google-adk` library for robust end-to-end testing.
+The project has adopted a robust, isolated testing strategy for its sub-agents, using the `InMemoryRunner` provided by the `google-adk` library.
 
+*   **Isolated Sub-Agent Tests:** Each sub-agent (e.g., `GoalsAgent`, `SolutionProposalAgent`) has its own dedicated test file (e.g., `test_goals_agent.py`). This allows for focused testing of each agent's specific behavior without the complexities of the full orchestration flow.
 *   **`pytest` and `pytest-asyncio`:** Tests are written using the `pytest` framework.
-*   **`InMemoryRunner`:** Tests run the agent in a realistic, in-memory environment.
-*   **Behavioral Assertions:** Tests verify the agent's behavior, such as its ability to ask appropriate clarifying questions for each PRD section, rather than asserting on exact string outputs.
+*   **`InMemoryRunner`:** Tests use the `InMemoryRunner` to run a specific sub-agent in a realistic, in-memory environment.
+*   **Behavioral Assertions:** Tests verify the agent's conversational behavior, such as its ability to ask appropriate clarifying questions, rather than asserting on exact string outputs. This makes the tests more stable and meaningful.
 
 ## Next Steps: Implementing the Sub-Agent Hierarchy
 
