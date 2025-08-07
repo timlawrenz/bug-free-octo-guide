@@ -5,21 +5,25 @@ This workflow transforms a high-level feature idea into a production-ready imple
 
 ## Running the Application
 
-To run the application, you will need to start two servers in separate terminal sessions:
-
-1.  **Backend Server (for development):**
+1.  **Install Dependencies:**
     ```bash
     # From the project root
-    venv/bin/uvicorn src.bug_free_octo_guide.main:app --reload --host 0.0.0.0
+    poetry install
     ```
-    The backend server will be available at `http://0.0.0.0:8000` and will automatically restart when code changes are detected.
 
-2.  **Frontend Server:**
-    ```bash
-    # From the project root
-    cd ui && npm start
-    ```
-    The frontend development server will be available at `http://localhost:3000` and accessible on your local network.
+2.  **Run the Agent:**
+    You can run the agent in two ways:
+
+    *   **CLI Mode:**
+        ```bash
+        # From the project root
+        poetry run adk run bug_free_octo_guide
+        ```
+    *   **Web Interface:**
+        ```bash
+        # From the project root
+        poetry run adk web bug_free_octo_guide
+        ```
 
 ## Phase 1: Planning and Decomposition (The Orchestrator's First Act)
 The process begins when an engineer provides a high-level request to a central orchestrator script. The orchestrator's first job is to understand the task and break it down.
