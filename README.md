@@ -26,10 +26,10 @@ This workflow transforms a high-level feature idea into a production-ready imple
         ```
 
 ## Phase 1: Planning and Decomposition (The Orchestrator's First Act)
-The process begins when an engineer provides a high-level request to a central orchestrator script. The orchestrator's first job is to understand the task and break it down.
-- PRD Generation: The orchestrator, acting as a "Project Manager," sends a prompt to a Gemini-powered PRD Agent. This prompt contains a template of your company's tech spec document, along with a high-level feature description and any relevant context (e.g., existing models, packs). The PRD Agent's output is a detailed technical specification document.
-- Human Checkpoint #1 (PRD Review): The orchestrator pauses and presents the generated PRD to the engineer for review. If the engineer approves the document, the process continues. If it's rejected, the engineer provides feedback, and the orchestrator can re-prompt the PRD Agent, initiating a correction cycle at the planning stage.
-- Ticket Generation: With the approved PRD, the orchestrator prompts a Gemini-powered Ticketing Agent. This agent's task is to analyze the PRD and generate a set of structured GitHub issues, complete with titles, descriptions, and acceptance criteria.
+The process begins when an engineer provides a high-level request to a central orchestrator agent. The orchestrator's first job is to understand the task and break it down.
+- PRD Generation: The orchestrator, acting as a "Project Manager," delegates the task of writing the PRD to a specialized `PrdWriterAgent`. This agent takes the user's request and any relevant context (e.g., from an `analyze_repo` tool) to generate a detailed technical specification document.
+- Human Checkpoint #1 (PRD Review): The orchestrator pauses and presents the generated PRD to the engineer for review. If the engineer approves the document, the process continues. If it's rejected, the engineer provides feedback, and the orchestrator can re-prompt the `PrdWriterAgent`, initiating a correction cycle at the planning stage.
+- Ticket Generation: With the approved PRD, the orchestrator prompts a `TicketingAgent`. This agent's task is to analyze the PRD and generate a set of structured GitHub issues, complete with titles, descriptions, and acceptance criteria.
 - Automated Handoff: The orchestrator then uses the GitHub API to automatically create these tickets in your repository and assigns them to a special "copilot" user, triggering the next phase.
 
 ## Phase 2: Automated Implementation and Self-Correction (The Coding Loop)

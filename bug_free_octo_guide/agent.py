@@ -12,14 +12,27 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from google.adk.agents import Agent
-from .prompt import agent_instruction
-from .tools.project_analyzer import analyze_repo
+from google.adk.agents import LlmAgent
+from google.adk.models import Gemini
+from google.adk.tools.agent_tool import AgentTool
+from .agents.prd_writer_agent import PrdWriterAgent
+from .tools.context_analysis_tool import analyze_repo
 
-
-root_agent = Agent(
-    model="gemini-1.5-flash",
+# The "root_agent" is the entry point to your agent.
+#
+# This agent is an "LlmAgent" that acts as a planner. It is responsible
+# for breaking down a complex task into a series of smaller, more
+# manageable steps. It then delegates these steps to other agents or tools.
+root_agent = LlmAgent(
+    model=Gemini(),
     name="bug_free_octo_guide",
-    instruction=agent_instruction,
-    tools=[analyze_repo],
+    instruction=(
+        "You are a project manager. Your goal is to create a PRD. "
+        "First, analyze the provided repository to understand the project context. "
+        "Then, use the `PrdWriterAgent` to create a PRD based on the user's request and the repository context."
+    ),
+    tools=[
+        analyze_repo,
+        AgentTool(agent=PrdWriterAgent(llm=Gemini())),
+    ],
 )
