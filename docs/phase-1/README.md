@@ -56,4 +56,4 @@ The project has adopted a robust, isolated testing strategy for its sub-agents, 
 The immediate plan is to build out the sub-agent hierarchy, starting with the first interactive step in the PRD process.
 
 1.  **`GoalsAgent`**: The first sub-agent to be implemented. It will be responsible for collaborating with the user to define the "Goals & Non-Goals" of the feature.
-2.  **Further Sub-Agents**: Subsequent agents, such as `SolutionProposalAgent`, `ApiChangesAgent`, and `TestingStrategyAgent`, will be implemented to handle the remaining sections of the PRD, each one building on the context gathered by the previous agents.
+2.  **Further Sub-Agents**: Subsequent agents, such as `SolutionProposalAgent`, `ApiChangesAgent`, `DbSchemaAgent`, and `TestingStrategyAgent`, will be implemented to handle the remaining sections of the PRD, each one building on the context gathered by the previous agents.
