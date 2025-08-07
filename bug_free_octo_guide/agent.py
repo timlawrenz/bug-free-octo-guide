@@ -18,6 +18,7 @@ from google.adk.tools.agent_tool import AgentTool
 from .agents.api_changes_agent import ApiChangesAgent
 from .agents.db_schema_agent import DbSchemaAgent
 from .agents.goals_agent import GoalsAgent
+from .agents.implementation_details_agent import ImplementationDetailsAgent
 from .agents.solution_proposal_agent import SolutionProposalAgent
 from .tools.context_analysis_tool import analyze_repo
 
@@ -31,7 +32,8 @@ root_agent = LlmAgent(
         "2. After successful analysis, delegate to the `GoalsAgent` to define the feature's goals.\n"
         "3. Once the goals are defined, delegate to the `SolutionProposalAgent` to help the user design a technical solution.\n"
         "4. After the solution is proposed, delegate to the `ApiChangesAgent` to define any API changes.\n"
-        "5. After the API changes are defined, delegate to the `DbSchemaAgent` to define any database schema changes."
+        "5. After the API changes are defined, delegate to the `DbSchemaAgent` to define any database schema changes.\n"
+        "6. After the database schema changes are defined, delegate to the `ImplementationDetailsAgent` to define the code implementation details."
     ),
     tools=[
         analyze_repo,
@@ -39,5 +41,6 @@ root_agent = LlmAgent(
         AgentTool(agent=SolutionProposalAgent(llm=Gemini())),
         AgentTool(agent=ApiChangesAgent(llm=Gemini())),
         AgentTool(agent=DbSchemaAgent(llm=Gemini())),
+        AgentTool(agent=ImplementationDetailsAgent(llm=Gemini())),
     ],
 )
