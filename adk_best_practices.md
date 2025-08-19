@@ -2,7 +2,43 @@
 
 This document summarizes the key learnings and best practices discovered while working with the Google Agent Development Kit (ADK).
 
-## 1. Hierarchical Agent Architecture
+## Abstract Patterns
+
+This section summarizes the key architectural and testing patterns that have been identified from the examples in the `google/adk-samples` repository.
+
+### Architecture and Decoupling
+
+*   **Hierarchical Agent Architecture:** Use a central orchestrator agent to manage specialized sub-agents and tools. This is a powerful pattern for building complex, multi-step agents. See the **Hierarchical Agent Architecture** example for more details.
+*   **Separation of Concerns:** Separate the agent's logic, prompts, and tools into different files. This makes the code easier to read, understand, and modify. See the **Architecture and Decoupling** example for more details.
+*   **Shared Libraries and Constants:** For larger agents, use a `shared_libraries` directory to store code that is used by multiple components. This avoids code duplication and makes the agent easier to maintain. See the **Shared Libraries and Constants** example for more details.
+*   **Secure Architecture:** For agents that handle sensitive data, design a secure architecture that protects against prompt injection attacks and enforces fine-grained access control. See the **Secure Architecture** example for more details.
+*   **Configuration and Callbacks:** For complex agents, use a dedicated `config.py` file to manage the agent's settings and use callbacks to add functionality without modifying the agent's core logic. See the **Configuration and Callbacks** example for more details.
+*   **Dynamic Instructions:** Use a `before_agent_callback` to dynamically modify the agent's instructions before each turn. This allows the agent to adapt to different contexts. See the **Dynamic Instructions** example for more details.
+*   **AgentTool:** Use the `AgentTool` class to use an agent as a tool for another agent. This is useful for breaking down a complex task into smaller, more manageable sub-tasks. See the **AgentTool** example for more details.
+*   **Workflow Orchestration:** For agents that perform a multi-stage, non-conversational workflow, use a root agent to orchestrate the activity of the other agents. See the **Workflow Orchestration** example for more details.
+*   **Human-in-the-Loop:** For agents that require human oversight or approval, use a custom agent to create a human-in-the-loop workflow. See the **Human-in-the-Loop** example for more details.
+*   **Looping and Sequential Agents:** For agents that need to perform a series of steps in a specific order, use the `SequentialAgent` and `LoopAgent` classes. See the **Looping and Sequential Agents** example for more details.
+*   **Pipeline Agents:** For agents that perform a complex, multi-stage workflow, use a `SequentialAgent` to define a pipeline of sub-agents. See the **Pipeline Agents** example for more details.
+*   **FunctionTool:** Use the `FunctionTool` class to wrap a Python function and make it available to an agent. This is useful for creating simple tools that do not require the complexity of a sub-agent. See the **FunctionTool** example for more details.
+*   **RAG Agents:** For agents that need to retrieve information from a large corpus of documents, use the `VertexAiRagRetrieval` tool. See the **RAG Agents** example for more details.
+
+### Testing and Evaluation
+
+*   **Unit and Integration Testing:** Use the `InMemoryRunner` to test the agent in a controlled, isolated environment. Use `pytest` and `pytest-asyncio` for asynchronous testing. See the **Testing with `InMemoryRunner`** example for more details.
+*   **Evaluation:** Use the `AgentEvaluator` to run data-driven evaluations. Create a `data` directory with `.test.json` files containing test cases and a `test_config.json` file to define the success criteria. See the **Testing and Evaluation** example for more details.
+*   **Advanced Evaluation:** For more complex agents, use a more structured evaluation format that supports multi-turn conversations. See the **Advanced Evaluation** example for more details.
+*   **Manual Testing:** For agents that are deployed to a remote environment, use an interactive script to manually test the agent. See the **Manual Testing** example for more details.
+
+### Prompting and Tool-Using Behavior
+
+*   **Prompting is Key:** The behavior of an `LlmAgent` is highly dependent on its instructions. Clear, explicit instructions are crucial for guiding the agent to the desired outcome. See the **Prompting is Key** example for more details.
+*   **Tool-Using Behavior:** To encourage an agent to use a tool, the tool must be well-described with a clear name and a descriptive docstring. See the **Tool-Using Behavior** example for more details.
+
+## Examples
+
+This section provides detailed examples of the patterns and best practices described above.
+
+### 1. Hierarchical Agent Architecture
 
 The `google-adk` promotes a hierarchical agent architecture where a central `LlmAgent` orchestrates specialized sub-agents and tools. This is a powerful pattern for building complex, multi-step agents.
 
@@ -37,7 +73,7 @@ root_agent = LlmAgent(
 )
 ```
 
-## 2. Architecture and Decoupling
+### 2. Architecture and Decoupling
 
 The ADK encourages a modular and decoupled architecture, which makes agents easier to develop, test, and maintain.
 
@@ -125,7 +161,7 @@ For agents that need to retrieve information from a large corpus of documents, y
 
 The `RAG` agent uses the `VertexAiRagRetrieval` tool to retrieve documentation and reference materials from a RAG corpus. This is a good example of how to use the `VertexAiRagRetrieval` tool to build a RAG agent.
 
-## 3. Testing with `InMemoryRunner`
+### 3. Testing with `InMemoryRunner`
 
 The most reliable way to test an ADK agent is to use the `InMemoryRunner`. This runs the agent in a realistic, in-memory environment and allows you to test its behavior by making assertions about its responses to various prompts.
 
@@ -173,7 +209,7 @@ async def test_agent_asks_for_clarification():
     assert "what" in response.lower() or "which" in response.lower() or "?" in response
 ```
 
-## 4. Prompting is Key
+### 4. Prompting is Key
 
 The behavior of an `LlmAgent` is highly dependent on its instructions. Clear, explicit instructions are crucial for guiding the agent to the desired outcome.
 
@@ -183,7 +219,7 @@ The behavior of an `LlmAgent` is highly dependent on its instructions. Clear, ex
 *   If you want the agent to use a specific tool, mention it by name in the instructions.
 *   Provide examples of the expected input and output.
 
-## 5. Tool-Using Behavior
+### 5. Tool-Using Behavior
 
 To encourage an agent to use a tool, the tool must be well-described with a clear name and a descriptive docstring that explains what the tool does, its arguments, and what it returns.
 
@@ -196,7 +232,7 @@ To encourage an agent to use a tool, the tool must be well-described with a clea
     *   What it returns.
 *   Use type hints for the arguments and the return value.
 
-## 6. Testing and Evaluation
+### 6. Testing and Evaluation
 
 The ADK provides a powerful framework for testing and evaluating agents.
 
