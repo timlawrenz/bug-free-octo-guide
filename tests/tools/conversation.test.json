@@ -1,0 +1,14 @@
+[
+  {
+    "query": "The repository is at https://github.com/google/adk-samples",
+    "expected_tool_use": [
+      {
+        "tool_name": "analyze_repo",
+        "tool_input": {
+          "repo_url": "https://github.com/google/adk-samples"
+        }
+      }
+    ],
+    "reference": "Repository analysis complete."
+  }
+]

@@ -36,13 +36,9 @@ The backend is a **FastAPI** server written in Python. It manages the entire pla
     *   The `generate_prd` method in the `PrdAgent` now handles the file saving logic directly.
     *   The `/chat` endpoint in `main.py` has been updated to correctly call the `PrdAgent` with the new tool-based approach.
 
-### Frontend (`ui` directory)
+### Frontend (Google ADK)
 
-The frontend is a **React** and **TypeScript** application styled with **Tailwind CSS**.
-
-*   It provides an initial form to capture the feature idea and target repository URL. The repository input has been changed from a dropdown to a simple text field.
-*   After the backend completes its analysis, the UI transitions to the familiar chat interface for the collaborative PRD creation process. The UI now polls the `/planning_status` endpoint and displays the status to the user, enabling a non-blocking user experience.
-*   Finally, it provides a mechanism to approve the PRD and trigger the ticket creation.
+The user interacts with the system through the command-line interface provided by the Google Agent Development Kit (ADK). There is no separate React-based frontend; all interactions, from providing the initial feature idea to the collaborative PRD creation, are handled via the ADK's conversational CLI.
 
 ## Interaction Flow
 
@@ -50,35 +46,27 @@ The following diagram illustrates the updated, context-aware workflow:
 
 ```mermaid
 sequenceDiagram
-    participant User (Browser)
+    participant User (CLI)
     participant Backend (FastAPI)
     participant Project Analyzer
     participant Rails Repo (Git)
     participant Gemini Model
 
-    User (Browser)->>+Backend (FastAPI): POST /start_planning (feature idea, repo_url)
-    Backend (FastAPI)->>User (Browser): Returns session_id
+    User (CLI)->>+Backend (FastAPI): POST /start_planning (feature idea, repo_url)
+    Backend (FastAPI)-->>-User (CLI): Returns session_id and status
     Backend (FastAPI)->>+Project Analyzer: (async) AnalyzeRepo(repo_url)
-    
-    User (Browser)->>+Backend (FastAPI): GET /planning_status/{session_id}
-    Backend (FastAPI)-->>-User (Browser): {"status": "cloning"}
 
     Project Analyzer->>+Rails Repo (Git): git clone
     Rails Repo (Git)-->>-Project Analyzer: Returns repository files
     Project Analyzer->>Backend (FastAPI): Returns "Project Context" summary
-    
-    User (Browser)->>+Backend (FastAPI): GET /planning_status/{session_id}
-    Backend (FastAPI)-->>-User (Browser): {"status": "generating"}
 
     Backend (FastAPI)->>+Gemini Model: Start chat with context-injected prompt
     Gemini Model-->>-Backend (FastAPI): Returns first question
-    
-    User (Browser)->>+Backend (FastAPI): GET /planning_status/{session_id}
-    Backend (FastAPI)-->>-User (Browser): {"status": "ready", "response": "First question..."}
+    Backend (FastAPI)-->>User (CLI): Displays first question
 
-    Note over User (Browser), Gemini Model: The rest of the /chat and /create_tickets flow proceeds as before, but now with full project context.
+    Note over User (CLI), Gemini Model: The rest of the /chat and /create_tickets flow proceeds as a conversation within the CLI.
 ```
 
 ## Next Steps
 
-The immediate next step is to implement this new architecture, starting with the UI changes to collect the repository URL upfront.
+The immediate next step is to implement this new architecture, starting with the backend changes to collect the repository URL and perform the context analysis.
